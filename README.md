@@ -13,18 +13,24 @@ An automated AI-driven document screening and identity verification platform des
 
 ## 🚀 Current Status
 
-The core backend pipeline and OCR extraction engine are implemented:
+The core backend pipeline, OCR extraction engine, and document validation module are implemented:
 
-* **FastAPI Backend Server**: RESTful API endpoints for uploading and processing documents.
-* **Passport MRZ Extraction Engine**: High-accuracy Machine Readable Zone (MRZ) parser powered by `passporteye` (extracting name, passport number, nationality, date of birth, expiry date, gender, and check digit validation score).
+* **FastAPI Backend Server**: RESTful API endpoints for uploading, extracting, and validating documents.
+* **Passport MRZ Extraction Engine**: High-accuracy Machine Readable Zone (MRZ) parser powered by `passporteye` (extracting name, passport number, nationality, date of birth, expiry date, gender, check digit validation score, and MRZ line 2).
 * **Generic OCR Fallback Engine**: Unstructured text and field extractor powered by `PaddleOCR` and `pytesseract` for visas, residence permits, and non-MRZ identity documents.
 * **Dual-Pipeline Execution**: Automatically attempts high-precision MRZ extraction first for passport documents; seamlessly falls back to generic OCR parsing if MRZ is absent or invalid.
+* **Document Validation Engine (`modules/validation.py`)**:
+  * **MRZ Checksum Verification**: Calculates 7-3-1 modulo 10 check digits over standard TD3 passport MRZ lines.
+  * **Date Plausibility & Expiry Verification**: Verifies document expiration and evaluates DOB plausibility and issue date ordering.
+  * **Blacklist Database Screening**: Queries local SQLite database (`data/blacklist.db`) seeded with blacklisted documents.
+* **OCR Caching System**: Caches OCR extraction results per `file_id` in `DB_FILES` to eliminate redundant OCR operations during validation calls.
 
 ---
 
 ## 🛠️ Tech Stack
 
 * **Backend Framework**: Python 3.10+, FastAPI, Uvicorn
+* **Database**: SQLite3 (`data/blacklist.db`)
 * **OCR Engines**: `PaddleOCR` (with `paddlepaddle`), `PassportEye`, `PyTesseract`
 * **System Engine**: Tesseract OCR (Binary Engine)
 
@@ -41,9 +47,10 @@ The core backend pipeline and OCR extraction engine are implemented:
 3. Add `C:\Program Files\Tesseract-OCR` to your System `PATH` environment variable.
 
 ### 2. Python Environment Setup
-Install required Python packages:
+Navigate to the `backend` directory and install required Python packages:
 
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
@@ -51,6 +58,7 @@ pip install -r requirements.txt
 Start the FastAPI application with live-reloading enabled:
 
 ```bash
+cd backend
 python -m uvicorn main:app --reload --port 8000
 ```
 
@@ -80,7 +88,7 @@ Uploads a document (JPEG/PNG/PDF) to the backend storage and assigns a tracking 
 ---
 
 ### 2. `POST /api/extract/{file_id}`
-Triggers document extraction on the uploaded file and returns structured metadata.
+Triggers document extraction on the uploaded file, caches the result, and returns structured metadata.
 
 **Sample Response - Passport (MRZ Extraction)**:
 ```json
@@ -94,29 +102,36 @@ Triggers document extraction on the uploaded file and returns structured metadat
     "date_of_birth": "950101",
     "date_of_expiry": "350101",
     "gender": "M",
-    "mrz_valid_score": 100
+    "mrz_valid_score": 100,
+    "mrz_line2": "A1234567<8IND9501015M3501019<<<<<<<<<<<<<<00"
   },
   "raw_text": null
 }
 ```
 
-**Sample Response - Visa / Residence Permit (Generic OCR Fallback)**:
+---
+
+### 3. `POST /api/validate/{file_id}`
+Runs document validation logic using cached OCR results (or triggering OCR if not extracted yet).
+
+**Sample Response (`200 OK`)**:
 ```json
 {
-  "document_type": "passport",
-  "method_used": "generic_ocr",
-  "fields": {
-    "name": "SHARMA AKSHAY",
-    "valid_until": "T1 MIGRANT TALENT"
+  "checksum": {
+    "checksum_valid": true,
+    "details": "MRZ checksums valid"
   },
-  "raw_text": [
-    "RESIDENCEPERMIT",
-    "NAME",
-    "SHARMA",
-    "AKSHAY",
-    "VALID UNTIL"
-  ],
-  "note": "MRZ extraction failed or returned empty fields, used generic OCR fallback"
+  "dates": {
+    "expiry_valid": true,
+    "dob_plausible": true,
+    "issues": []
+  },
+  "blacklist": {
+    "blacklisted": false,
+    "reason": null
+  },
+  "overall_valid": true,
+  "issues": []
 }
 ```
 
@@ -124,7 +139,7 @@ Triggers document extraction on the uploaded file and returns structured metadat
 
 ## 🗺️ Next Steps
 
-* [ ] **Validation & Checksum Module**: Logical verification of DOB/expiry dates and MRZ checksum validation rules.
+* [x] **Validation & Checksum Module**: Logical verification of DOB/expiry dates, MRZ checksum validation rules, and SQLite blacklist screening.
 * [ ] **Tampering & Forgery Detection**: Error Level Analysis (ELA) and copy-move forgery detection algorithms.
 * [ ] **Face Matching Module**: Cross-verifying facial biometrics against document photos.
 * [ ] **Frontend Dashboard**: Interactive web client built with Next.js & Tailwind CSS.
