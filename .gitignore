@@ -8,6 +8,15 @@ venv/
 .venv/
 env/
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Next.js / Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
 
 # Distribution / packaging
 *.egg-info/
@@ -15,10 +24,14 @@ dist/
 build/
 
 # Uploaded & generated files
-uploads/*
-!uploads/.gitkeep
-data/*.db
-!data/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/uploads/ela/*
+!backend/uploads/ela/.gitkeep
+backend/uploads/preprocessed/*
+!backend/uploads/preprocessed/.gitkeep
+backend/data/*.db
+!backend/data/.gitkeep
 
 # Paddle / Model caches
 .paddlex/

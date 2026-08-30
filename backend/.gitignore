@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments & env files
+venv/
+.venv/
+env/
+.env
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Uploaded & generated files
+uploads/*
+!uploads/.gitkeep
+data/*.db
+!data/.gitkeep
+
+# Paddle / Model caches
+.paddlex/
+.paddleocr/
+
+# Operating System files
+.DS_Store
+Thumbs.db
