@@ -33,13 +33,18 @@ def extract_passport(image_path: str) -> dict:
             "date_of_birth": None,
             "date_of_expiry": None,
             "gender": None,
-            "mrz_valid_score": 0
+            "mrz_valid_score": 0,
+            "mrz_line2": None
         }
 
     mrz_dict = mrz.to_dict()
     names = mrz_dict.get("names", "")
     surname = mrz_dict.get("surname", "")
     full_name = f"{names} {surname}".strip() or None
+
+    raw_text = mrz_dict.get("raw_text", "") or ""
+    raw_lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    mrz_line2 = raw_lines[1] if len(raw_lines) >= 2 else None
 
     return {
         "name": full_name,
@@ -48,7 +53,8 @@ def extract_passport(image_path: str) -> dict:
         "date_of_birth": mrz_dict.get("date_of_birth"),
         "date_of_expiry": mrz_dict.get("expiration_date"),
         "gender": mrz_dict.get("sex"),
-        "mrz_valid_score": getattr(mrz, "valid_score", 0)
+        "mrz_valid_score": getattr(mrz, "valid_score", 0),
+        "mrz_line2": mrz_line2
     }
 
 

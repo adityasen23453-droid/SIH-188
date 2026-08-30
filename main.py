@@ -4,6 +4,7 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from modules.ocr import run_ocr
+from modules.validation import run_validation
 
 app = FastAPI()
 
@@ -40,7 +41,8 @@ async def upload_document(
     DB_FILES[file_id] = {
         "file_path": file_path,
         "filename": filename,
-        "document_type": document_type
+        "document_type": document_type,
+        "ocr_result": None
     }
 
     return {
@@ -56,5 +58,21 @@ async def extract_document(file_id: str):
     if not file_info:
         return JSONResponse(status_code=404, content={"error": "File not found"})
 
-    result = run_ocr(file_info["file_path"], file_info["document_type"])
-    return result
+    if not file_info.get("ocr_result"):
+        file_info["ocr_result"] = run_ocr(file_info["file_path"], file_info["document_type"])
+
+    return file_info["ocr_result"]
+
+
+@app.post("/api/validate/{file_id}")
+async def validate_document(file_id: str):
+    file_info = DB_FILES.get(file_id)
+    if not file_info:
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+
+    if not file_info.get("ocr_result"):
+        file_info["ocr_result"] = run_ocr(file_info["file_path"], file_info["document_type"])
+
+    validation_result = run_validation(file_info["ocr_result"])
+    return validation_result
+

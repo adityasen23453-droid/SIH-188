@@ -17,6 +17,8 @@ build/
 # Uploaded & generated files
 uploads/*
 !uploads/.gitkeep
+data/*.db
+!data/.gitkeep
 
 # Paddle / Model caches
 .paddlex/
