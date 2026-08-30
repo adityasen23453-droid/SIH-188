@@ -4,4 +4,6 @@ python-multipart
 passporteye
 paddleocr
 paddlepaddle
-
+transformers
+torch
+opencv-python

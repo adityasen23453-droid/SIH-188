@@ -19,6 +19,30 @@ def get_ocr_engine():
     return _ocr_engine
 
 
+def check_field_confidence(val: str | None, max_len: int = 40, check_alpha_only: bool = False) -> str:
+    """
+    Checks plausibility of an extracted MRZ text field.
+    Returns 'low' if val has 3+ repeated consecutive chars, exceeds max_len, or fails type constraints.
+    Returns 'high' otherwise.
+    """
+    if not val or not isinstance(val, str):
+        return "high"
+
+    clean_val = val.strip()
+
+    if re.search(r"([A-Za-z0-9])\1{2,}", clean_val):
+        return "low"
+
+    if len(clean_val) > max_len:
+        return "low"
+
+    if check_alpha_only:
+        if not clean_val.isalpha() or len(clean_val) != 3:
+            return "low"
+
+    return "high"
+
+
 def extract_passport(image_path: str) -> dict:
     try:
         mrz = read_mrz(image_path)
@@ -28,11 +52,15 @@ def extract_passport(image_path: str) -> dict:
     if mrz is None:
         return {
             "name": None,
+            "name_confidence": "high",
             "passport_number": None,
+            "passport_number_confidence": "high",
             "nationality": None,
+            "nationality_confidence": "high",
             "date_of_birth": None,
             "date_of_expiry": None,
             "gender": None,
+            "gender_note": None,
             "mrz_valid_score": 0,
             "mrz_line2": None
         }
@@ -46,13 +74,40 @@ def extract_passport(image_path: str) -> dict:
     raw_lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     mrz_line2 = raw_lines[1] if len(raw_lines) >= 2 else None
 
+    # 1. Gender Validation: Valid values are M, F, <
+    raw_gender = mrz_dict.get("sex")
+    if raw_gender:
+        raw_gender = str(raw_gender).strip().upper()
+
+    if raw_gender in ["M", "F", "<"]:
+        gender = raw_gender
+        gender_note = None
+    elif raw_gender:
+        gender = None
+        gender_note = f"Unreliable gender character extracted: '{raw_gender}'"
+    else:
+        gender = None
+        gender_note = None
+
+    # 2. Plausibility & Confidence checks
+    pass_num = mrz_dict.get("number")
+    nationality = mrz_dict.get("nationality")
+
+    name_conf = check_field_confidence(full_name, max_len=40)
+    pass_num_conf = check_field_confidence(pass_num, max_len=10)
+    nat_conf = check_field_confidence(nationality, max_len=3, check_alpha_only=True)
+
     return {
         "name": full_name,
-        "passport_number": mrz_dict.get("number"),
-        "nationality": mrz_dict.get("nationality"),
+        "name_confidence": name_conf,
+        "passport_number": pass_num,
+        "passport_number_confidence": pass_num_conf,
+        "nationality": nationality,
+        "nationality_confidence": nat_conf,
         "date_of_birth": mrz_dict.get("date_of_birth"),
         "date_of_expiry": mrz_dict.get("expiration_date"),
-        "gender": mrz_dict.get("sex"),
+        "gender": gender,
+        "gender_note": gender_note,
         "mrz_valid_score": getattr(mrz, "valid_score", 0),
         "mrz_line2": mrz_line2
     }

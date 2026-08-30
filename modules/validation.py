@@ -22,74 +22,215 @@ def calc_mrz_check_digit(char_str: str) -> int:
     return total % 10
 
 
+def correct_mrz_line2_numeric_fields(mrz_line2: str) -> tuple[str, list[str]]:
+    """
+    Applies ICAO 9303 letter-to-digit auto-correction strictly to positions
+    that must be numeric digits (DOB 13-19, Expiry 21-27, check digits 9, 19, 27, 43).
+    Does NOT modify passport number (0-8) or nationality (10-12).
+    Returns (corrected_mrz_line2, corrections_applied_list).
+    """
+    if not mrz_line2 or not isinstance(mrz_line2, str):
+        return mrz_line2, []
+
+    line = list(mrz_line2.strip().upper().replace(" ", ""))
+    corrections = []
+
+    to_digit = {
+        'B': '8',
+        'O': '0', 'Q': '0', 'D': '0',
+        'I': '1', 'L': '1',
+        'S': '5',
+        'Z': '2',
+        'A': '4'
+    }
+
+    numeric_positions = [9, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27]
+    if len(line) >= 44:
+        numeric_positions.append(43)
+
+    for pos in numeric_positions:
+        if pos < len(line):
+            char = line[pos]
+            if char in to_digit:
+                corrected_char = to_digit[char]
+                line[pos] = corrected_char
+                corrections.append(f"position {pos}: {char}->{corrected_char}")
+
+    return "".join(line), corrections
+
+
 def validate_mrz_checksum(passport_number: str = None, date_of_birth: str = None, date_of_expiry: str = None, mrz_line2: str = None) -> dict:
     """
     Validates MRZ check digits on standard passport MRZ line 2 (TD3 format).
-    Returns { "checksum_valid": bool | None, "details": "..." }
+    Returns structured results for passport number, date of birth, date of expiry,
+    composite check, overall validity boolean, list of failed fields, and applied OCR corrections.
     """
+    empty_result = {
+        "passport_number_check": {"value": None, "expected_digit": None, "computed_digit": None, "valid": None, "field_slice": "0:9", "check_digit_pos": 9},
+        "date_of_birth_check": {"value": None, "expected_digit": None, "computed_digit": None, "valid": None, "field_slice": "13:19", "check_digit_pos": 19},
+        "date_of_expiry_check": {"value": None, "expected_digit": None, "computed_digit": None, "valid": None, "field_slice": "21:27", "check_digit_pos": 27},
+        "composite_check": {"expected_digit": None, "computed_digit": None, "valid": None},
+        "overall_checksum_valid": None,
+        "failed_fields": [],
+        "ocr_corrections_applied": []
+    }
+
     if not mrz_line2 or not isinstance(mrz_line2, str) or len(mrz_line2.strip()) == 0:
-        return {
-            "checksum_valid": None,
-            "details": "MRZ not available for checksum validation"
-        }
+        empty_result["note"] = "MRZ line 2 not available for checksum validation"
+        return empty_result
 
-    line2 = mrz_line2.strip()
+    line2, corrections_applied = correct_mrz_line2_numeric_fields(mrz_line2)
     if len(line2) < 28:
-        return {
-            "checksum_valid": False,
-            "details": f"MRZ line 2 length ({len(line2)}) is too short for validation"
+        empty_result["note"] = f"MRZ line 2 length ({len(line2)}) is too short for validation"
+        empty_result["ocr_corrections_applied"] = corrections_applied
+        return empty_result
+
+    failed_fields = []
+    malformed_note = "MRZ read appears malformed at this position, skipping checksum check"
+
+    # 1. Passport number check (chars 0..8, check digit at char 9)
+    passport_val = line2[0:9]
+    passport_exp = line2[9]
+    if not passport_exp.isdigit():
+        passport_check = {
+            "value": passport_val,
+            "expected_digit": passport_exp,
+            "computed_digit": None,
+            "valid": None,
+            "field_slice": "0:9",
+            "check_digit_pos": 9,
+            "note": malformed_note
+        }
+    else:
+        passport_comp = str(calc_mrz_check_digit(passport_val))
+        passport_valid = (passport_comp == passport_exp)
+        if not passport_valid:
+            failed_fields.append("passport_number_check")
+        passport_check = {
+            "value": passport_val,
+            "expected_digit": passport_exp,
+            "computed_digit": passport_comp,
+            "valid": passport_valid,
+            "field_slice": "0:9",
+            "check_digit_pos": 9
         }
 
-    failed_checks = []
-
-    # 1. Passport number check digit (chars 0..8, check digit at char 9)
-    passport_field = line2[0:9]
-    passport_check_char = line2[9]
-    if not passport_check_char.isdigit():
-        failed_checks.append("Passport number check digit is non-numeric")
+    # 2. Date of birth check (chars 13..18, check digit at char 19)
+    dob_val = line2[13:19]
+    dob_exp = line2[19]
+    if not dob_exp.isdigit():
+        dob_check = {
+            "value": dob_val,
+            "expected_digit": dob_exp,
+            "computed_digit": None,
+            "valid": None,
+            "field_slice": "13:19",
+            "check_digit_pos": 19,
+            "note": malformed_note
+        }
     else:
-        calc_check = calc_mrz_check_digit(passport_field)
-        if calc_check != int(passport_check_char):
-            failed_checks.append(f"Passport check digit mismatch (computed {calc_check}, expected {passport_check_char})")
+        dob_comp = str(calc_mrz_check_digit(dob_val))
+        dob_valid = (dob_comp == dob_exp)
+        if not dob_valid:
+            failed_fields.append("date_of_birth_check")
+        dob_check = {
+            "value": dob_val,
+            "expected_digit": dob_exp,
+            "computed_digit": dob_comp,
+            "valid": dob_valid,
+            "field_slice": "13:19",
+            "check_digit_pos": 19
+        }
 
-    # 2. Date of birth check digit (chars 13..18, check digit at char 19)
-    dob_field = line2[13:19]
-    dob_check_char = line2[19]
-    if not dob_check_char.isdigit():
-        failed_checks.append("DOB check digit is non-numeric")
+    # 3. Date of expiry check (chars 21..26, check digit at char 27)
+    expiry_val = line2[21:27]
+    expiry_exp = line2[27]
+    if not expiry_exp.isdigit():
+        expiry_check = {
+            "value": expiry_val,
+            "expected_digit": expiry_exp,
+            "computed_digit": None,
+            "valid": None,
+            "field_slice": "21:27",
+            "check_digit_pos": 27,
+            "note": malformed_note
+        }
     else:
-        calc_check = calc_mrz_check_digit(dob_field)
-        if calc_check != int(dob_check_char):
-            failed_checks.append(f"DOB check digit mismatch (computed {calc_check}, expected {dob_check_char})")
+        expiry_comp = str(calc_mrz_check_digit(expiry_val))
+        expiry_valid = (expiry_comp == expiry_exp)
+        if not expiry_valid:
+            failed_fields.append("date_of_expiry_check")
+        expiry_check = {
+            "value": expiry_val,
+            "expected_digit": expiry_exp,
+            "computed_digit": expiry_comp,
+            "valid": expiry_valid,
+            "field_slice": "21:27",
+            "check_digit_pos": 27
+        }
 
-    # 3. Date of expiry check digit (chars 21..26, check digit at char 27)
-    expiry_field = line2[21:27]
-    expiry_check_char = line2[27]
-    if not expiry_check_char.isdigit():
-        failed_checks.append("Expiry check digit is non-numeric")
-    else:
-        calc_check = calc_mrz_check_digit(expiry_field)
-        if calc_check != int(expiry_check_char):
-            failed_checks.append(f"Expiry check digit mismatch (computed {calc_check}, expected {expiry_check_char})")
-
-    # 4. Composite check digit if 44 characters
+    # 4. Composite check
     if len(line2) >= 44:
         composite_field = line2[0:10] + line2[13:20] + line2[21:43]
-        composite_check_char = line2[43]
-        if composite_check_char.isdigit():
-            calc_check = calc_mrz_check_digit(composite_field)
-            if calc_check != int(composite_check_char):
-                failed_checks.append(f"Composite check digit mismatch (computed {calc_check}, expected {composite_check_char})")
+        composite_exp = line2[43]
+        composite_slice_str = "0:10 + 13:20 + 21:43"
+        composite_pos = 43
+    elif len(line2) >= 30 and line2[-1].isdigit():
+        composite_field = line2[0:10] + line2[13:20] + line2[21:-1]
+        composite_exp = line2[-1]
+        composite_slice_str = f"0:10 + 13:20 + 21:{len(line2)-1}"
+        composite_pos = len(line2) - 1
+    else:
+        composite_field = None
+        composite_exp = None
+        composite_slice_str = None
+        composite_pos = None
 
-    if failed_checks:
-        return {
-            "checksum_valid": False,
-            "details": "MRZ checksum failure: " + "; ".join(failed_checks)
+    if composite_field is not None and composite_exp is not None:
+        if not composite_exp.isdigit():
+            composite_check = {
+                "expected_digit": composite_exp,
+                "computed_digit": None,
+                "valid": None,
+                "field_slice": composite_slice_str,
+                "check_digit_pos": composite_pos,
+                "note": malformed_note
+            }
+        else:
+            composite_comp = str(calc_mrz_check_digit(composite_field))
+            composite_valid = (composite_comp == composite_exp)
+            if not composite_valid:
+                failed_fields.append("composite_check")
+            composite_check = {
+                "expected_digit": composite_exp,
+                "computed_digit": composite_comp,
+                "valid": composite_valid,
+                "field_slice": composite_slice_str,
+                "check_digit_pos": composite_pos
+            }
+    else:
+        composite_check = {
+            "expected_digit": None,
+            "computed_digit": None,
+            "valid": None
         }
 
+    all_checks = [passport_check, dob_check, expiry_check, composite_check]
+    if any(c.get("valid") is False for c in all_checks):
+        overall_checksum_valid = False
+    elif any(c.get("valid") is True for c in all_checks):
+        overall_checksum_valid = True
+    else:
+        overall_checksum_valid = None
+
     return {
-        "checksum_valid": True,
-        "details": "MRZ checksums valid"
+        "passport_number_check": passport_check,
+        "date_of_birth_check": dob_check,
+        "date_of_expiry_check": expiry_check,
+        "composite_check": composite_check,
+        "overall_checksum_valid": overall_checksum_valid,
+        "failed_fields": failed_fields,
+        "ocr_corrections_applied": corrections_applied
     }
 
 
@@ -104,18 +245,7 @@ def parse_date(date_val, date_type: str = None) -> date | None:
     if not date_str:
         return None
 
-    # Try standard ISO / hyphen / slash formats first
-    formats = [
-        "%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y", "%m/%d/%Y",
-        "%d-%m-%Y", "%d %b %Y", "%d %B %Y", "%Y%m%d"
-    ]
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            pass
-
-    # YYMMDD (6 digits, common in MRZ)
+    # 1. YYMMDD (6 digits, common in MRZ)
     if len(date_str) == 6 and date_str.isdigit():
         yy = int(date_str[0:2])
         mm = int(date_str[2:4])
@@ -125,10 +255,8 @@ def parse_date(date_val, date_type: str = None) -> date | None:
             current_yy = current_year % 100
 
             if date_type == "expiry":
-                # Expiry dates are typically in the 2000s unless very old
-                year = 2000 + yy if yy <= current_yy + 30 else 1900 + yy
+                year = 2000 + yy if yy <= current_yy + 35 else 1900 + yy
             elif date_type == "dob":
-                # DOB: if YY <= current_yy, usually born 2000s; if YY > current_yy, born 1900s
                 year = 2000 + yy if yy <= current_yy else 1900 + yy
             else:
                 year = 2000 + yy if yy <= current_yy + 15 else 1900 + yy
@@ -137,6 +265,24 @@ def parse_date(date_val, date_type: str = None) -> date | None:
                 return date(year, mm, dd)
             except ValueError:
                 pass
+
+    # 2. YYYYMMDD (8 digits)
+    if len(date_str) == 8 and date_str.isdigit():
+        try:
+            return datetime.strptime(date_str, "%Y%m%d").date()
+        except ValueError:
+            pass
+
+    # 3. Standard ISO / hyphen / slash formats
+    formats = [
+        "%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y", "%m/%d/%Y",
+        "%d-%m-%Y", "%d %b %Y", "%d %B %Y"
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            pass
 
     return None
 
@@ -297,8 +443,9 @@ def run_validation(ocr_result: dict) -> dict:
 
     combined_issues = []
 
-    if checksum_res.get("checksum_valid") is False:
-        combined_issues.append(f"Checksum error: {checksum_res.get('details')}")
+    if checksum_res.get("overall_checksum_valid") is False:
+        failed_list = checksum_res.get("failed_fields", [])
+        combined_issues.append(f"MRZ checksum failure in field(s): {', '.join(failed_list)}")
 
     combined_issues.extend(dates_res.get("issues", []))
 
@@ -306,7 +453,7 @@ def run_validation(ocr_result: dict) -> dict:
         combined_issues.append(f"Passport blacklisted: {blacklist_res.get('reason')}")
 
     overall_valid = (
-        checksum_res.get("checksum_valid") is not False and
+        checksum_res.get("overall_checksum_valid") is not False and
         dates_res.get("expiry_valid") is True and
         dates_res.get("dob_plausible") is True and
         len(dates_res.get("issues", [])) == 0 and

@@ -24,20 +24,30 @@ class TestValidationModule(unittest.TestCase):
             date_of_expiry="120415",
             mrz_line2=line2
         )
-        self.assertTrue(res["checksum_valid"])
-        self.assertEqual(res["details"], "MRZ checksums valid")
+        self.assertTrue(res["overall_checksum_valid"])
+        self.assertTrue(res["passport_number_check"]["valid"])
+        self.assertEqual(res["passport_number_check"]["expected_digit"], "6")
+        self.assertEqual(res["passport_number_check"]["computed_digit"], "6")
+        self.assertTrue(res["date_of_birth_check"]["valid"])
+        self.assertTrue(res["date_of_expiry_check"]["valid"])
+        self.assertTrue(res["composite_check"]["valid"])
+        self.assertEqual(len(res["failed_fields"]), 0)
 
     def test_mrz_checksum_tampered(self):
         # Tampered check digit for passport number (changed 6 to 5)
         line2 = "L898902C35UTO7408122F1204159ZE184226B<<<<<10"
         res = validate_mrz_checksum(mrz_line2=line2)
-        self.assertFalse(res["checksum_valid"])
-        self.assertIn("Passport check digit mismatch", res["details"])
+        self.assertFalse(res["overall_checksum_valid"])
+        self.assertFalse(res["passport_number_check"]["valid"])
+        self.assertEqual(res["passport_number_check"]["expected_digit"], "5")
+        self.assertEqual(res["passport_number_check"]["computed_digit"], "6")
+        self.assertIn("passport_number_check", res["failed_fields"])
 
     def test_mrz_checksum_none(self):
         res = validate_mrz_checksum(mrz_line2=None)
-        self.assertIsNone(res["checksum_valid"])
-        self.assertIn("MRZ not available", res["details"])
+        self.assertIsNone(res["overall_checksum_valid"])
+        self.assertIn("note", res)
+        self.assertIn("MRZ line 2 not available", res["note"])
 
     def test_dates_valid(self):
         res = validate_dates(
