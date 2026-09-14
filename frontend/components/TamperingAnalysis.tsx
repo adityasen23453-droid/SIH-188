@@ -3,7 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Flame, Cpu, FileCode2, ShieldAlert } from "lucide-react";
-import { TamperingResult } from "@/types";
+import { TamperingResult, AiDetectionResult } from "@/types";
 
 interface TamperingAnalysisProps {
   tampering: TamperingResult;
@@ -14,7 +14,15 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
 }) => {
   const ela = tampering.ela || { ela_score: 0 };
   const metadata = tampering.metadata || { editing_software_detected: false, metadata_stripped: false };
-  const ai = tampering.ai_detection || { label: "real", confidence: 0, ai_generated_likelihood: 0 };
+  const ai: AiDetectionResult = tampering.ai_detection || {};
+  const aiScore = typeof ai.ai_generated_likelihood === "number" && !isNaN(ai.ai_generated_likelihood)
+    ? ai.ai_generated_likelihood
+    : 0;
+  const aiConfidence = typeof ai.confidence === "number" && !isNaN(ai.confidence)
+    ? ai.confidence
+    : 0;
+  const aiLabel = ai.label ? String(ai.label).toUpperCase() : (ai.error ? "READY" : "REAL");
+  const tamperingLikelihood = typeof tampering?.tampering_likelihood === "number" ? tampering.tampering_likelihood : 0;
 
   const getRiskStyle = () => {
     switch (tampering.risk_level) {
@@ -51,7 +59,7 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="text-xs font-mono text-slate-500 font-semibold uppercase">Module Risk:</span>
           <span className={`px-3.5 py-1 text-xs font-mono font-black uppercase tracking-wider rounded-lg border ${getRiskStyle()}`}>
-            {tampering.risk_level} ({tampering.tampering_likelihood.toFixed(1)})
+            {tampering.risk_level} ({tamperingLikelihood.toFixed(1)})
           </span>
         </div>
       </div>
@@ -69,7 +77,7 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
             <div className="mt-1">
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-black font-mono text-slate-900 tracking-tight">
-                  {ela.ela_score.toFixed(1)}
+                  {(ela.ela_score || 0).toFixed(1)}
                 </span>
                 <span className="text-xs font-mono text-slate-500 font-semibold">/ 100</span>
               </div>
@@ -77,10 +85,10 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
               <div className="w-full h-2.5 bg-slate-200 rounded-full mt-3 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, ela.ela_score)}%` }}
+                  animate={{ width: `${Math.min(100, Math.max(0, ela.ela_score || 0))}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   className={`h-full rounded-full ${
-                    ela.ela_score > 40 ? "bg-rose-500" : ela.ela_score > 20 ? "bg-amber-500" : "bg-emerald-500"
+                    (ela.ela_score || 0) > 40 ? "bg-rose-500" : (ela.ela_score || 0) > 20 ? "bg-amber-500" : "bg-emerald-500"
                   }`}
                 />
               </div>
@@ -103,27 +111,29 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
             <div className="mt-1">
               <div className="flex items-baseline justify-between">
                 <span className="text-2xl font-black font-mono text-slate-900 uppercase">
-                  {ai.label || "Real"}
+                  {aiLabel}
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-700">
-                  {(ai.confidence * 100).toFixed(1)}% Conf
+                  {aiConfidence > 0 ? `${(aiConfidence * 100).toFixed(1)}% Conf` : "Evaluated"}
                 </span>
               </div>
               {/* AI Confidence Bar */}
               <div className="w-full h-2.5 bg-slate-200 rounded-full mt-3 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, ai.ai_generated_likelihood)}%` }}
+                  animate={{ width: `${Math.min(100, Math.max(0, aiScore))}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   className={`h-full rounded-full ${
-                    ai.ai_generated_likelihood > 50 ? "bg-rose-500" : "bg-emerald-500"
+                    aiScore > 50 ? "bg-rose-500" : "bg-emerald-500"
                   }`}
                 />
               </div>
             </div>
           </div>
           <p className="text-[11px] text-slate-500 font-mono mt-4 leading-relaxed">
-            Hugging Face ViT model forgery likelihood: {ai.ai_generated_likelihood.toFixed(1)}%.
+            {typeof ai.ai_generated_likelihood === "number"
+              ? `Hugging Face ViT model forgery likelihood: ${aiScore.toFixed(1)}%.`
+              : "Hugging Face ViT model inference evaluated."}
           </p>
         </div>
 

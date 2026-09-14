@@ -11,6 +11,11 @@ export interface ExtractedFields {
   gender_note?: string | null;
   mrz_valid_score?: number;
   mrz_line2?: string | null;
+  aadhaar_number?: string | null;
+  voter_id?: string | null;
+  dl_number?: string | null;
+  id_number?: string | null;
+  visa_number?: string | null;
   [key: string]: any;
 }
 
@@ -37,7 +42,9 @@ export interface ValidationChecksum {
 
 export interface ValidationDates {
   expiry_valid?: boolean;
+  expiry_status?: string;
   dob_plausible?: boolean;
+  dob_status?: string;
   issues?: string[];
 }
 
@@ -46,10 +53,84 @@ export interface ValidationBlacklist {
   reason?: string | null;
 }
 
+export interface ValidationNationalId {
+  valid: boolean;
+  id_type: string;
+  issues: string[];
+}
+
+export interface ValidationVizConsistency {
+  checked: boolean;
+  consistent: boolean;
+  mismatches: string[];
+}
+
+export interface ValidationRegistry {
+  blacklisted: boolean;
+  status: string;
+  reason: string | null;
+}
+
+export interface AadhaarVerification {
+  checked: boolean;
+  valid_verhoeff?: boolean;
+  verhoeff_valid?: boolean;
+  uid_format_valid?: boolean;
+  expected_checkdigit?: string | number | null;
+  computed_checkdigit?: string | number | null;
+  sovereign_header_detected?: boolean;
+  qr_code_detected?: boolean;
+  formatted_uid?: string;
+  valid_format?: boolean;
+  issues: string[];
+  [key: string]: any;
+}
+
+export interface VoterIdVerification {
+  checked: boolean;
+  valid_format?: boolean;
+  epic_format_valid?: boolean;
+  authority_header_detected?: boolean;
+  epic_number?: string;
+  issues: string[];
+  [key: string]: any;
+}
+
+export interface DLVerification {
+  checked: boolean;
+  valid_format?: boolean;
+  sarathi_format_valid?: boolean;
+  jurisdiction_verified?: boolean;
+  rto_code?: string;
+  state_code?: string;
+  state_name?: string;
+  issues: string[];
+  [key: string]: any;
+}
+
+export interface VisaVerification {
+  checked: boolean;
+  valid_window?: boolean;
+  visa_number_valid?: boolean;
+  consular_stamp_verified?: boolean;
+  category?: string;
+  visa_type?: string;
+  entries?: string;
+  issues: string[];
+  [key: string]: any;
+}
+
 export interface ValidationResult {
   checksum: ValidationChecksum;
+  national_id?: ValidationNationalId;
+  viz_consistency?: ValidationVizConsistency;
+  aadhaar_verification?: AadhaarVerification;
+  voter_id_verification?: VoterIdVerification;
+  dl_verification?: DLVerification;
+  visa_verification?: VisaVerification;
   dates: ValidationDates;
   blacklist: ValidationBlacklist;
+  registry?: ValidationRegistry;
   overall_valid: boolean;
   issues: string[];
   preprocessing?: {
@@ -59,11 +140,37 @@ export interface ValidationResult {
   };
 }
 
+export interface StampForensics {
+  stamp_detected: boolean;
+  stamp_count: number;
+  stamp_boxes: number[][];
+  suspicious_stamp_splicing: boolean;
+  note?: string;
+}
+
+export interface AiDetectionResult {
+  label?: string;
+  confidence?: number;
+  ai_generated_likelihood?: number;
+  is_ai_generated?: boolean;
+  error?: string;
+}
+
+export interface DetectedRegion {
+  id: string;
+  type: "header" | "mrz" | "mrz_zone" | "face" | "stamp" | "text" | string;
+  label: string;
+  box: [number, number, number, number];
+  confidence: number;
+  text?: string;
+}
+
 export interface TamperingResult {
   ela: {
     ela_score: number;
     ela_image_path?: string;
     ela_image_url?: string;
+    tamper_boxes?: number[][];
   };
   metadata: {
     editing_software_detected: boolean;
@@ -71,11 +178,8 @@ export interface TamperingResult {
     metadata_stripped: boolean;
     raw_exif_summary?: Record<string, any>;
   };
-  ai_detection?: {
-    label: string;
-    confidence: number;
-    ai_generated_likelihood: number;
-  };
+  ai_detection?: AiDetectionResult;
+  stamp_forensics?: StampForensics;
   tampering_likelihood: number;
   risk_level: "low" | "medium" | "high";
   preprocessing?: {
@@ -85,13 +189,87 @@ export interface TamperingResult {
   };
 }
 
+export interface PortraitFaceInfo {
+  face_detected: boolean;
+  face_image_path?: string | null;
+  face_image_url?: string | null;
+  bounding_box?: number[] | null;
+  note?: string;
+}
+
+export interface BlockchainBlock {
+  block_index: number;
+  timestamp: string;
+  doc_hash: string;
+  file_id: string;
+  document_type: string;
+  risk_score: number;
+  risk_level: string;
+  biometric_status: string;
+  decision: string;
+  officer_id: string;
+  previous_hash: string;
+  block_hash: string;
+}
+
+export interface BlockchainAuditResult {
+  chain_valid: boolean;
+  total_blocks: number;
+  tampered_blocks: Array<{ block_index: number; reason: string }>;
+  latest_block_hash?: string;
+  verified_at?: string;
+}
+
+export interface LivenessInfo {
+  liveness_score: number;
+  laplacian_variance: number;
+  mean_saturation: number;
+  is_live: boolean;
+  issues: string[];
+}
+
+export interface AliasMatch {
+  record_id: number;
+  previous_name: string;
+  previous_document_number: string;
+  document_type: string;
+  nationality: string;
+  crossing_point: string;
+  crossing_timestamp: string;
+  similarity: number;
+  is_different_identity: boolean;
+}
+
+export interface AliasCheckResult {
+  alias_detected: boolean;
+  match_count: number;
+  top_match?: AliasMatch | null;
+  all_matches: AliasMatch[];
+}
+
+export interface BiometricVerificationResult {
+  verified: boolean;
+  status: "MATCH" | "BORDERLINE" | "MISMATCH" | "DUPLICATE_ALIAS_ALERT" | string;
+  similarity: number;
+  similarity_percentage: number;
+  verdict: string;
+  liveness: LivenessInfo;
+  alias_check: AliasCheckResult;
+}
+
 export interface AnalyzeResponse {
   file_id: string;
   document_type: string;
   extracted_fields: ExtractedFields;
+  viz_fields?: Record<string, any>;
+  portrait_face?: PortraitFaceInfo;
   validation: ValidationResult;
   tampering: TamperingResult;
   overall_risk_score: number;
   overall_risk_level: "low" | "medium" | "high";
   summary_flags: string[];
+  scanned_image_url?: string;
+  detected_regions?: DetectedRegion[];
+  blockchain_receipt?: BlockchainBlock;
 }
+

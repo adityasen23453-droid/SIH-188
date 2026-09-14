@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIH 26188 - Product Requirements Document (PRD)</title>
+<style>
+@page {
+    size: A4;
+    margin: 14mm 14mm 14mm 14mm;
+}
+* {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.52;
+    font-size: 9.4pt;
+    margin: 0;
+    padding: 0;
+}
+h1, h2, h3, h4, h5 {
+    color: #0f172a;
+    font-weight: 700;
+    line-height: 1.25;
+    page-break-after: avoid;
+}
+h1 { font-size: 19pt; letter-spacing: -0.02em; margin-top: 0; }
+h2 {
+    font-size: 12.5pt;
+    color: #1e1b4b;
+    border-bottom: 1.5px solid #cbd5e1;
+    padding-bottom: 4px;
+    margin-top: 1.4em;
+}
+h3 { font-size: 10.8pt; color: #2563eb; margin-top: 1.1em; }
+h4 { font-size: 9.8pt; color: #334155; margin-top: 0.8em; }
+p { margin-top: 0.3em; margin-bottom: 0.65em; }
+ul, ol { margin-top: 0.25em; margin-bottom: 0.65em; padding-left: 20px; }
+li { margin-bottom: 0.25em; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 8.5pt;
+    page-break-inside: avoid;
+}
+th, td {
+    padding: 6px 8px;
+    border: 1px solid #cbd5e1;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background-color: #0f172a;
+    color: #ffffff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 7.5pt;
+    letter-spacing: 0.05em;
+}
+tr:nth-child(even) td { background-color: #f8fafc; }
+code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 8.2pt;
+    background-color: #f1f5f9;
+    padding: 1.5px 4px;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+}
+pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 8pt;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    line-height: 1.4;
+}
+pre code { background-color: transparent; color: inherit; border: none; padding: 0; }
+.header-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: white;
+    padding: 18px 22px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+}
+.header-banner h1 { color: white; border-bottom: none; margin-bottom: 4px; font-size: 18pt; }
+.header-banner .meta {
+    font-size: 8.6pt;
+    color: #cbd5e1;
+    font-family: ui-monospace, monospace;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+}
+.header-banner .tag {
+    background-color: #059669;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 7.5pt;
+}
+.callout {
+    border-left: 4px solid #3b82f6;
+    background-color: #eff6ff;
+    padding: 8px 12px;
+    margin: 0.8em 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 8.9pt;
+}
+.callout-warning { border-left-color: #f59e0b; background-color: #fffbeb; }
+.callout-danger { border-left-color: #ef4444; background-color: #fef2f2; }
+.callout-success { border-left-color: #10b981; background-color: #ecfdf5; }
+.callout-title {
+    font-weight: 700;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 9.1pt;
+}
+.badge {
+    display: inline-block;
+    padding: 1.5px 5px;
+    font-size: 7.2pt;
+    font-weight: 700;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+}
+.badge-green { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.badge-blue { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.badge-amber { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.badge-red { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.page-break { page-break-before: always; }
+.diagram-box {
+    margin: 1em 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    page-break-inside: avoid;
+}
+.diagram-caption {
+    font-size: 8pt;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 4px;
+    text-align: center;
+    text-transform: uppercase;
+}
+.math-block {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-family: ui-monospace, monospace;
+    font-size: 8.8pt;
+    color: #0f172a;
+    margin: 0.6em 0;
+    text-align: center;
+}
+.fr-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background-color: #ffffff;
+    page-break-inside: avoid;
+}
+.fr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+.fr-id {
+    font-family: ui-monospace, monospace;
+    font-weight: 700;
+    color: #2563eb;
+    font-size: 9pt;
+}
+.fr-title {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 9.8pt;
+}
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+    <h1>PRODUCT REQUIREMENTS DOCUMENT (PRD)</h1>
+    <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 10pt;">Project Guardian: AI-Based Fake Identity & Document Screening System</p>
+    <div class="meta">
+        <span><strong>PS ID:</strong> 26188</span>
+        <span><strong>Client:</strong> Ministry of Home Affairs &mdash; Sashastra Seema Bal (SSB)</span>
+        <span><strong>Doc Version:</strong> 1.0.0 (Production Blueprint)</span>
+        <span class="tag">Theme: Blockchain & Cybersecurity</span>
+    </div>
+</div>
+
+<h2>1. Document Control & Executive Metadata</h2>
+<table>
+    <tbody>
+        <tr>
+            <td style="width: 25%;"><strong>Document Title</strong></td>
+            <td style="width: 25%;">Product Requirements Document (PRD)</td>
+            <td style="width: 25%;"><strong>Project Codename</strong></td>
+            <td style="width: 25%;">Project Guardian (SIH PS 26188)</td>
+        </tr>
+        <tr>
+            <td><strong>Target Ministry</strong></td>
+            <td>Ministry of Home Affairs (MHA)</td>
+            <td><strong>Department / Force</strong></td>
+            <td>Sashastra Seema Bal (SSB), Police II Division</td>
+        </tr>
+        <tr>
+            <td><strong>Problem Category</strong></td>
+            <td>Software</td>
+            <td><strong>Thematic Area</strong></td>
+            <td>Blockchain & Cybersecurity</td>
+        </tr>
+        <tr>
+            <td><strong>Classification</strong></td>
+            <td>Confidential &mdash; Prototype Specification</td>
+            <td><strong>Status</strong></td>
+            <td>Approved for Implementation</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>2. Executive Summary & Problem Definition</h2>
+<h3>2.1 Background & Operating Context</h3>
+<p>The <strong>Sashastra Seema Bal (SSB)</strong> oversees border security across India's open, visa-free borders with Nepal (1,751 km) and Bhutan (699 km). Border outposts and Integrated Check Posts (ICPs) handle high pedestrian and vehicular traffic daily. Travelers present a heterogeneous mix of documents: Indian and Nepalese/Bhutanese citizens carry domestic identity cards (Voter ID/EPIC, Aadhaar, Driving Licenses, Transit Permits), while third-country foreigners carry international Passports and Visas.</p>
+
+<h3>2.2 Problem Statement & Core Operational Vulnerabilities</h3>
+<p>Current border verification relies on visual human inspection and isolated database lookups. This operational model suffers from critical vulnerabilities:</p>
+<ul>
+    <li><strong>High Passenger Bottlenecks:</strong> Manual checks take 2&ndash;5 minutes per person, leading to severe congestion.</li>
+    <li><strong>Undetected Physical & Digital Tampering:</strong> High-quality color photo replacements, edited dates of birth, and counterfeit visa ink stamps cannot be caught by visual inspection alone.</li>
+    <li><strong>Identity Impersonation:</strong> Lookalike individuals travel on genuine documents of other persons.</li>
+    <li><strong>Multiple Identities by the Same Person:</strong> Trans-border criminals and smugglers create multiple identity cards across different jurisdictions under different names.</li>
+    <li><strong>Lack of an Immutable Audit Trail:</strong> Border logs on traditional spreadsheets or isolated servers are vulnerable to unauthorized modification or repudiation.</li>
+</ul>
+
+<h3>2.3 Solution Vision</h3>
+<p>Develop <strong>Project Guardian</strong>, an integrated, AI-driven, and blockchain-audited border screening platform that captures document images and live face feeds, executes automated perspective correction, extracts dual-zone OCR data, validates standard checksums (ICAO 9303, Aadhaar Verhoeff), detects multi-signal digital forgeries (ELA + ViT + EXIF), verifies biometrics (1:1 match and 1:N FAISS duplicate search), and outputs an explainable risk score (0&ndash;100) with immutable ledger commit within <strong>under 2.5 seconds</strong>.</p>
+
+<h2>3. Key Performance Indicators (KPIs) & Success Metrics</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 25%;">Metric / KPI</th>
+            <th style="width: 20%;">Target Threshold</th>
+            <th style="width: 55%;">Operational Significance</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Total Verification Latency</strong></td>
+            <td><strong>&le; 2.50 seconds</strong></td>
+            <td>End-to-end processing per traveler to prevent checkpoint bottlenecks.</td>
+        </tr>
+        <tr>
+            <td><strong>MRZ Checksum Accuracy</strong></td>
+            <td><strong>100.0%</strong></td>
+            <td>Zero false calculations on ICAO 9303 TD3 standard 7-3-1 check digits.</td>
+        </tr>
+        <tr>
+            <td><strong>OCR Field Accuracy</strong></td>
+            <td><strong>&ge; 98.5%</strong></td>
+            <td>Correct character extraction on high-resolution deskewed identity documents.</td>
+        </tr>
+        <tr>
+            <td><strong>Tamper Detection F1-Score</strong></td>
+            <td><strong>&ge; 92.0%</strong></td>
+            <td>Balanced precision and recall across photo replacement, text alteration, and Canva/PS edits.</td>
+        </tr>
+        <tr>
+            <td><strong>Biometric False Match (FMR)</strong></td>
+            <td><strong>&le; 0.1%</strong></td>
+            <td>Prevents impostors from passing face verification checks.</td>
+        </tr>
+        <tr>
+            <td><strong>1:N Duplicate Search Time</strong></td>
+            <td><strong>&le; 50 ms</strong></td>
+            <td>FAISS index search speed across 10,000 enrolled border profiles.</td>
+        </tr>
+        <tr>
+            <td><strong>Audit Trail Integrity</strong></td>
+            <td><strong>100.0%</strong></td>
+            <td>Zero repudiation; tamper-evident SHA-256 block chain commit on every screening event.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>4. Target User Personas & Detailed User Journeys</h2>
+
+<h3>4.1 User Personas</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;">Persona</th>
+            <th style="width: 25%;">Role & Environment</th>
+            <th style="width: 55%;">Primary Operational Needs</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>SSB Ground Officer</strong></td>
+            <td>Checkpoint booth duty at border ICP (e.g. Raxaul, Jogbani). High passenger volume.</td>
+            <td>Sub-second result, clear visual cues (Green / Amber / Red banner), automated camera capture, minimal manual typing.</td>
+        </tr>
+        <tr>
+            <td><strong>Supervisory / Intelligence Officer</strong></td>
+            <td>Secondary inspection room. Handles flagged/detained travelers.</td>
+            <td>Deep evidence drill-down: side-by-side ELA compression heatmap toggle, VIZ-to-MRZ discrepancy viewer, FAISS biometric duplicate alerts.</td>
+        </tr>
+        <tr>
+            <td><strong>System Auditor / Cyber Cell</strong></td>
+            <td>Command HQ / State Police II IT Division.</td>
+            <td>Tamper-evident audit ledger inspection, verification of block hashes, screening receipts, officer badge attribution.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>4.2 Primary Screening User Journey</h3>
+<div class="diagram-box">
+    <svg viewBox="0 0 760 120" width="100%" height="120" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="40" width="130" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="70" y="58" fill="#1e3a8a" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">1. TRAVELER INGEST</text>
+        <text x="70" y="72" fill="#475569" font-size="7.5" font-family="sans-serif" text-anchor="middle">Doc scan + Live face</text>
+
+        <path d="M 135 61 L 155 61" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <rect x="155" y="40" width="130" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="220" y="58" fill="#1e3a8a" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">2. AI SCREENING</text>
+        <text x="220" y="72" fill="#475569" font-size="7.5" font-family="sans-serif" text-anchor="middle">OCR + Forensics + Bio</text>
+
+        <path d="M 285 61 L 305 61" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <rect x="305" y="40" width="135" height="42" rx="5" fill="#fdf4ff" stroke="#d946ef" stroke-width="1.5"/>
+        <text x="372" y="58" fill="#701a75" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">3. RISK VERDICT</text>
+        <text x="372" y="72" fill="#475569" font-size="7.5" font-family="sans-serif" text-anchor="middle">0-100 score + reasons</text>
+
+        <path d="M 440 61 L 460 61" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <rect x="460" y="40" width="140" height="42" rx="5" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+        <text x="530" y="58" fill="#065f46" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">4. TRIAGE ACTION</text>
+        <text x="530" y="72" fill="#475569" font-size="7.5" font-family="sans-serif" text-anchor="middle">Admit / Inspect / Detain</text>
+
+        <path d="M 600 61 L 620 61" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <rect x="620" y="40" width="135" height="42" rx="5" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+        <text x="687" y="58" fill="#713f12" font-size="8.5" font-weight="700" font-family="sans-serif" text-anchor="middle">5. LEDGER COMMIT</text>
+        <text x="687" y="72" fill="#475569" font-size="7.5" font-family="sans-serif" text-anchor="middle">SHA-256 audit block</text>
+    </svg>
+    <div class="diagram-caption">Figure 4: Standard Checkpoint Screening Pipeline Flow</div>
+</div>
+
+<h2>5. System Scope & Document Taxonomy</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 25%;">Scope Category</th>
+            <th style="width: 45%;">Supported Document Types</th>
+            <th style="width: 30%;">In Scope / Out of Scope</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>International Travel</strong></td>
+            <td>ICAO Doc 9303 TD3 Passports, Indian Sticker Visas, e-Visa Grant Letters.</td>
+            <td><span class="badge badge-green">IN SCOPE</span> Full MRZ, Checksum, ELA, ViT.</td>
+        </tr>
+        <tr>
+            <td><strong>National Identification</strong></td>
+            <td>Election Commission Voter ID (EPIC), UIDAI Aadhaar Card.</td>
+            <td><span class="badge badge-green">IN SCOPE</span> Verhoeff check, regex, tamper checks.</td>
+        </tr>
+        <tr>
+            <td><strong>Driving Licenses</strong></td>
+            <td>Sarathi State Transport Smart Cards / Laminated DLs.</td>
+            <td><span class="badge badge-green">IN SCOPE</span> State regex, validity bounds.</td>
+        </tr>
+        <tr>
+            <td><strong>Border Permits</strong></td>
+            <td>SSB Emergency Transit Slips, Embassy Identity Slips.</td>
+            <td><span class="badge badge-green">IN SCOPE</span> Stamp and date validation.</td>
+        </tr>
+        <tr>
+            <td><strong>Physical Contactless Chips</strong></td>
+            <td>Physical ISO 14443 NFC chip hardware reading via browser.</td>
+            <td><span class="badge badge-red">OUT OF SCOPE</span> Simulated LDS data verification.</td>
+        </tr>
+        <tr>
+            <td><strong>Classified Police Networks</strong></td>
+            <td>Direct live network write access to CCTNS / Interpol SLTD.</td>
+            <td><span class="badge badge-red">OUT OF SCOPE</span> High-fidelity local SQLite mock.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>6. Detailed Functional Requirements (FR-01 to FR-08)</h2>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-01</span>
+        <span class="fr-title">Automated Document Ingestion & Computer Vision Preprocessing</span>
+        <span class="badge badge-blue">Core CV</span>
+    </div>
+    <p><strong>Description:</strong> The system must accept camera/scanner uploads (JPEG, PNG, WEBP), identify quadrilateral document borders, and deskew the image to a standardized top-down orientation.</p>
+    <ul>
+        <li><strong>FR-01.1:</strong> Automatically rescale high-resolution images to target height (1000px) and apply Gaussian blur with Canny edge detection.</li>
+        <li><strong>FR-01.2:</strong> Locate the largest convex contour using <code>cv2.approxPolyDP</code> and compute a 4-point perspective transform (<code>cv2.warpPerspective</code>).</li>
+        <li><strong>FR-01.3:</strong> Apply Contrast Limited Adaptive Histogram Equalization (CLAHE) on the LAB L-channel to eliminate glare and shadows.</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-02</span>
+        <span class="fr-title">Dual-Zone Optical Character Recognition (OCR) Engine</span>
+        <span class="badge badge-blue">Core OCR</span>
+    </div>
+    <p><strong>Description:</strong> The system must extract text across both structured Machine Readable Zones (MRZ) and unstructured Visual Inspection Zones (VIZ).</p>
+    <ul>
+        <li><strong>FR-02.1:</strong> Parse 2-line TD3 MRZs via <code>PassportEye</code> and extract Name, Passport Number, Nationality, DOB, Expiry, Gender, and Check Digits.</li>
+        <li><strong>FR-02.2:</strong> Apply scoped positional letter-to-digit auto-correction strictly to numeric positions (DOB: 13-19, Expiry: 21-27, Check digits: 9, 19, 27, 43): <code>O</code>/<code>D</code>&rarr;<code>0</code>, <code>I</code>/<code>L</code>&rarr;<code>1</code>, <code>Z</code>&rarr;<code>2</code>, <code>A</code>&rarr;<code>4</code>, <code>S</code>&rarr;<code>5</code>, <code>B</code>&rarr;<code>8</code>.</li>
+        <li><strong>FR-02.3:</strong> Fall back to <code>PaddleOCR</code> / <code>Tesseract</code> for VIZ text extraction and regex pattern matching on Voter IDs and Driving Licenses.</li>
+        <li><strong>FR-02.4:</strong> Flag character-level extraction plausibility with confidence ratings (High / Low).</li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-03</span>
+        <span class="fr-title">Deterministic Standards & Rule-Based Validation Engine</span>
+        <span class="badge badge-blue">Rule Engine</span>
+    </div>
+    <p><strong>Description:</strong> Verify that extracted document data complies with international and national mathematical validation standards.</p>
+    <ul>
+        <li><strong>FR-03.1:</strong> Compute ICAO Doc 9303 7-3-1 modulo 10 checksums on Passport Number, Date of Birth, Date of Expiry, and Composite Line 2.</li>
+        <li><strong>FR-03.2:</strong> Implement the <strong>Aadhaar Verhoeff algorithm</strong> over the dihedral group D<sub>5</sub> to validate 12-digit Indian national identity numbers.</li>
+        <li><strong>FR-03.3:</strong> Execute <strong>VIZ-to-MRZ Cross-Field Consistency Checks</strong>: Compare printed visual name and dates against MRZ decoded values.</li>
+        <li><strong>FR-03.4:</strong> Validate date plausibility: Expiration date &gt; Current date; Date of Birth not in future and &lt; 120 years ago; Issue date &lt; Expiration date.</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-04</span>
+        <span class="fr-title">Multi-Signal Digital Forgery & Tampering Detection Engine</span>
+        <span class="badge badge-amber">Core AI Innovation</span>
+    </div>
+    <p><strong>Description:</strong> Detect pixel alterations, photo swaps, digital modifications, and re-compression anomalies across four distinct attack vectors.</p>
+    <ul>
+        <li><strong>FR-04.1 (ELA Analysis):</strong> Re-save input at JPEG Quality 90, compute absolute pixel variance, amplify contrast, save a PNG difference heatmap, and return a normalized 0&ndash;100 ELA score.</li>
+        <li><strong>FR-04.2 (AI ViT Classifier):</strong> Blend the original image with ELA (alpha=0.3) and execute classification using pretrained Vision Transformer <code>zodumair/document-forgery-detector</code> to output a deepfake/forgery probability.</li>
+        <li><strong>FR-04.3 (EXIF Forensics):</strong> Parse EXIF tags for graphic editing tools (Photoshop, GIMP, Canva, Snapseed) and flag stripped/missing metadata.</li>
+        <li><strong>FR-04.4 (Stamp & Seal Forensics):</strong> Detect overland immigration stamps and evaluate color histogram consistency and contour edge discontinuities.</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-05</span>
+        <span class="fr-title">Biometric Face Verification (1:1 Matching)</span>
+        <span class="badge badge-amber">Biometrics</span>
+    </div>
+    <p><strong>Description:</strong> Verify that the individual standing at the checkpoint matches the photographic portrait printed on the document.</p>
+    <ul>
+        <li><strong>FR-05.1:</strong> Automatically crop the document portrait photo using facial boundary coordinates or OpenCV cascade detection.</li>
+        <li><strong>FR-05.2:</strong> Capture live webcam video frames from the browser via HTML5 <code>MediaDevices.getUserMedia</code>.</li>
+        <li><strong>FR-05.3:</strong> Compute 512-dimensional facial embeddings using deep ArcFace / MobileFaceNet networks and evaluate cosine similarity.</li>
+        <li><strong>FR-05.4:</strong> Apply calibrated operational decision thresholds: &ge; 0.65 (Verified Match), 0.50&ndash;0.64 (Uncertain / Manual Check), &lt; 0.50 (Mismatch / Impersonation Alert).</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-06</span>
+        <span class="fr-title">Biometric Duplicate Identity Detection (1:N FAISS Vector Search)</span>
+        <span class="badge badge-amber">Anti-Alias AI</span>
+    </div>
+    <p><strong>Description:</strong> Detect trans-border individuals attempting to cross under multiple identities, aliases, or forged names.</p>
+    <ul>
+        <li><strong>FR-06.1:</strong> Maintain an in-memory <strong>FAISS</strong> (Facebook AI Similarity Search) index storing embeddings of previously screened travelers.</li>
+        <li><strong>FR-06.2:</strong> On each live face capture, perform an inner-product nearest-neighbor search against the index within &le; 50ms.</li>
+        <li><strong>FR-06.3:</strong> If a matching biometric face (&gt; 0.70 similarity) is discovered under a <em>different name, nationality, or passport number</em>, immediately trigger a <strong>"CRITICAL: Duplicate Identity / Alias Detected"</strong> alert.</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-07</span>
+        <span class="fr-title">Explainable Evidence Fusion & Risk-Scoring Engine</span>
+        <span class="badge badge-blue">XAI Decision</span>
+    </div>
+    <p><strong>Description:</strong> Consolidate multi-modal signals into an auditable 0&ndash;100 risk score accompanied by transparent reason codes.</p>
+    <ul>
+        <li><strong>FR-07.1:</strong> Apply dynamic penalty weights: Blacklist (+50), Biometric Mismatch (+30), Checksum Failure (+25), Document Expired (+20), EXIF Edit Tool (+15), VIZ-MRZ Mismatch (+15).</li>
+        <li><strong>FR-07.2:</strong> Categorize decision into 3 triage bands: <strong>LOW (&lt; 30)</strong>: Auto-Admit; <strong>MEDIUM (30&ndash;60)</strong>: Secondary Inspection; <strong>HIGH (&gt; 60)</strong>: Immediate Detention.</li>
+        <li><strong>FR-07.3:</strong> Output an array of plain-English diagnostic reason codes for immediate officer understanding.</li>
+    </ul>
+</div>
+
+<div class="fr-card">
+    <div class="fr-header">
+        <span class="fr-id">FR-08</span>
+        <span class="fr-title">Blockchain & Cryptographic Audit Trail Layer</span>
+        <span class="badge badge-green">Blockchain & Security</span>
+    </div>
+    <p><strong>Description:</strong> Ensure non-repudiation and immutable logging of every border screening event in compliance with the SIH theme.</p>
+    <ul>
+        <li><strong>FR-08.1 (Zero-PII On-Chain):</strong> Store document images and raw biometrics off-chain. Commit only SHA-256 document hashes, risk scores, model versions, and officer badge IDs.</li>
+        <li><strong>FR-08.2 (Cryptographic Block Hash):</strong> Link each event into an append-only hash chain:
+            <code>Block_Hash = SHA-256(Index + Timestamp + Prev_Hash + Doc_Hash + RiskScore + OfficerID)</code>.
+        </li>
+        <li><strong>FR-08.3 (Ledger Integrity API):</strong> Expose <code>GET /api/ledger/verify</code> to validate that the cryptographic hash chain is uncorrupted and unbroken.</li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h2>7. Non-Functional Requirements (NFRs)</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 22%;">NFR Area</th>
+            <th style="width: 25%;">Target Specification</th>
+            <th style="width: 53%;">Implementation Detail</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Latency Budget</strong></td>
+            <td>&le; 2.50s End-to-End</td>
+            <td>Preprocessing: &le; 100ms; OCR/MRZ: &le; 600ms; ELA + ViT: &le; 800ms; Biometrics: &le; 400ms; Fusion + Ledger: &le; 50ms.</td>
+        </tr>
+        <tr>
+            <td><strong>Security & Privacy</strong></td>
+            <td>DPDP Act 2023 Compliant</td>
+            <td>AES-256 encryption at rest; TLS 1.3 in transit; live face frames processed in memory and immediately discarded.</td>
+        </tr>
+        <tr>
+            <td><strong>Offline Resilience</strong></td>
+            <td>100% Local Autonomous</td>
+            <td>Containerized via Docker; local SQLite registry ensures operation during border outpost telecom outages.</td>
+        </tr>
+        <tr>
+            <td><strong>UI/UX Ergonomics</strong></td>
+            <td>High-Visibility Dashboard</td>
+            <td>Executive light theme with high-contrast navy headers; responsive for desktop workstations and ruggedized border tablets.</td>
+        </tr>
+        <tr>
+            <td><strong>System Scalability</strong></td>
+            <td>100+ concurrent streams</td>
+            <td>Asynchronous FastAPI endpoints powered by Uvicorn ASGI workers.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>8. Technical Architecture & Database Schemas</h2>
+
+<h3>8.1 Complete Database Schema (SQLite Off-Chain Store)</h3>
+<pre><code>-- 1. Document Registry Table
+CREATE TABLE IF NOT EXISTS documents (
+    document_id TEXT PRIMARY KEY,
+    document_number_hash TEXT NOT NULL,
+    issuing_country TEXT NOT NULL,
+    document_type TEXT NOT NULL,
+    issue_date TEXT,
+    expiry_date TEXT,
+    status TEXT NOT NULL CHECK(status IN ('VALID', 'EXPIRED', 'REVOKED', 'STOLEN')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Stolen & Blacklisted Documents (Interpol / MHA Watchlist)
+CREATE TABLE IF NOT EXISTS blacklist (
+    passport_number TEXT PRIMARY KEY,
+    reason TEXT NOT NULL,
+    flagged_by TEXT DEFAULT 'Interpol SLTD',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Cryptographic Screening Audit Ledger (Immutable Hash Chain)
+CREATE TABLE IF NOT EXISTS screening_audit_ledger (
+    block_index INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    previous_hash TEXT NOT NULL,
+    document_hash TEXT NOT NULL,
+    risk_score REAL NOT NULL,
+    risk_level TEXT NOT NULL,
+    reasons_json TEXT NOT NULL,
+    officer_id TEXT NOT NULL,
+    model_versions TEXT NOT NULL,
+    block_hash TEXT NOT NULL
+);</code></pre>
+
+<h3>8.2 Complete REST API Contract Specification</h3>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 12%;">Method</th>
+            <th style="width: 25%;">Endpoint</th>
+            <th style="width: 28%;">Payload / Parameters</th>
+            <th style="width: 35%;">Response Schema</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/upload</code></td>
+            <td><code>multipart/form-data</code> (file: binary, doc_type: str)</td>
+            <td><code>{"file_id": str, "status": "uploaded"}</code></td>
+        </tr>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/extract/{file_id}</code></td>
+            <td>None</td>
+            <td>Extracted fields (name, number, dates, gender, confidences).</td>
+        </tr>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/validate/{file_id}</code></td>
+            <td>None</td>
+            <td>Checksums (7-3-1, composite), date validity, blacklist status.</td>
+        </tr>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/tamper-check/{file_id}</code></td>
+            <td>None</td>
+            <td>ELA score, ELA image URL, EXIF software, ViT forgery score.</td>
+        </tr>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/face-verify/{file_id}</code></td>
+            <td><code>multipart/form-data</code> (live_face: binary)</td>
+            <td><code>{"match": bool, "similarity": float, "faiss_alias_alert": bool}</code></td>
+        </tr>
+        <tr>
+            <td><code>POST</code></td>
+            <td><code>/api/analyze/{file_id}</code></td>
+            <td>Optional live face payload</td>
+            <td><strong>Unified Dashboard Response:</strong> Scores, bands, reasons, ledger block.</td>
+        </tr>
+        <tr>
+            <td><code>GET</code></td>
+            <td><code>/api/ledger/audit</code></td>
+            <td>None</td>
+            <td>Array of all immutable audit blocks with hash integrity status.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>9. Implementation Roadmap & Sprint Breakdown</h2>
+<p>The project execution plan is structured into 5 focused development sprints:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 15%;">Sprint</th>
+            <th style="width: 25%;">Pillar & Focus</th>
+            <th style="width: 45%;">Concrete Engineering Deliverables</th>
+            <th style="width: 15%;">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Sprint 1</strong></td>
+            <td>Core CV, OCR & Rules</td>
+            <td>OpenCV perspective transform, PassportEye MRZ extraction, ICAO 7-3-1 checksums, auto-corrector.</td>
+            <td><span class="badge badge-green">COMPLETED</span></td>
+        </tr>
+        <tr>
+            <td><strong>Sprint 2</strong></td>
+            <td>Digital Forgery Forensics</td>
+            <td>JPEG Q=90 ELA heatmap generator, EXIF software parser, Hugging Face ViT forgery classification.</td>
+            <td><span class="badge badge-green">COMPLETED</span></td>
+        </tr>
+        <tr>
+            <td><strong>Sprint 3</strong></td>
+            <td>Biometric Engine & FAISS</td>
+            <td>Portrait face auto-crop, HTML5 live webcam stream in Next.js, ArcFace 1:1 cosine match, FAISS 1:N index.</td>
+            <td><span class="badge badge-amber">IN PROGRESS</span></td>
+        </tr>
+        <tr>
+            <td><strong>Sprint 4</strong></td>
+            <td>Ledger & National IDs</td>
+            <td>Aadhaar Verhoeff checksum, VIZ-to-MRZ discrepancy check, SHA-256 Merkle audit ledger endpoints.</td>
+            <td><span class="badge badge-blue">UPCOMING</span></td>
+        </tr>
+        <tr>
+            <td><strong>Sprint 5</strong></td>
+            <td>Demo Suite & Hardening</td>
+            <td>10-case synthetic test suite generation, performance benchmark tuning (&lt;2.5s), presentation polish.</td>
+            <td><span class="badge badge-blue">UPCOMING</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>10. Risk Management & Contingency Matrix</h2>
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;">Identified Risk</th>
+            <th style="width: 15%;">Severity</th>
+            <th style="width: 35%;">Impact Description</th>
+            <th style="width: 30%;">Engineered Contingency / Mitigation</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Webcam Unavailable</strong></td>
+            <td>Medium</td>
+            <td>Evaluation laptop or booth has no functioning camera.</td>
+            <td>Pre-packaged test images allow simulated traveler face injection with 1-click fallback.</td>
+        </tr>
+        <tr>
+            <td><strong>ViT Inference Delay</strong></td>
+            <td>Medium</td>
+            <td>GPU unavailable on local evaluation machine (CPU fallback &gt; 3s).</td>
+            <td>Model execution runs asynchronously; ELA and metadata scores provide immediate partial preview.</td>
+        </tr>
+        <tr>
+            <td><strong>Passport MRZ Creased</strong></td>
+            <td>Low</td>
+            <td>Folds or scratches cause character misreads.</td>
+            <td>Scoped positional letter-to-digit auto-corrector recovers OCR errors; generic OCR acts as fallback.</td>
+        </tr>
+        <tr>
+            <td><strong>Database Unreachable</strong></td>
+            <td>Low</td>
+            <td>External internet severed at remote border outpost.</td>
+            <td>Autonomous local SQLite registry stores all blacklist and revocation records on the edge.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="callout callout-success" style="margin-top: 20px;">
+    <div class="callout-title">Sign-off & Engineering Readiness</div>
+    This PRD represents the complete functional and technical specification for <strong>Project Guardian</strong>. All modules, mathematical algorithms, data contracts, and operational requirements have been validated against the Ministry of Home Affairs / Sashastra Seema Bal PS 26188 mandate.
+</div>
+
+</body>
+</html>

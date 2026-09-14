@@ -1,0 +1,29 @@
+{
+  "dataset_size": 104,
+  "genuine_count": 52,
+  "manipulated_count": 52,
+  "confusion_matrix": {
+    "TP": 51,
+    "FP": 7,
+    "TN": 45,
+    "FN": 1
+  },
+  "accuracy": 0.9231,
+  "precision": 0.8793,
+  "recall": 0.9808,
+  "f1_score": 0.9273,
+  "false_positive_rate": 0.1346,
+  "false_negative_rate": 0.0192,
+  "latency_ms": {
+    "p50": 721.0,
+    "p95": 1453.78,
+    "p99": 9622.32,
+    "mean": 1102.37
+  },
+  "stage_mean_ms": {
+    "preprocessing": 86.31,
+    "ocr": 949.18,
+    "tampering": 65.53,
+    "validation": 1.33
+  }
+}

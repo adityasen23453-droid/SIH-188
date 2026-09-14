@@ -4,7 +4,7 @@ import tempfile
 from PIL import Image
 from fastapi.testclient import TestClient
 from main import app, DB_FILES
-from modules.tampering import run_ela, check_metadata, check_ai_manipulation, run_tampering_detection
+from modules.tampering import run_ela, check_metadata, check_ai_manipulation, run_tampering_detection, analyze_stamp_region
 
 
 class TestTamperingModule(unittest.TestCase):
@@ -29,6 +29,8 @@ class TestTamperingModule(unittest.TestCase):
         self.assertIn("ela_score", res)
         self.assertIn("ela_image_path", res)
         self.assertIn("ela_image_url", res)
+        self.assertIn("tamper_boxes", res)
+        self.assertIsInstance(res["tamper_boxes"], list)
         self.assertIsInstance(res["ela_score"], float)
         self.assertTrue(0.0 <= res["ela_score"] <= 100.0)
         self.assertTrue(os.path.exists(res["ela_image_path"]))
@@ -44,6 +46,13 @@ class TestTamperingModule(unittest.TestCase):
         res = run_ela("non_existent_file.jpg")
         self.assertIn("error", res)
         self.assertEqual(res["ela_score"], 0.0)
+
+    def test_analyze_stamp_region(self):
+        res = analyze_stamp_region(self.test_jpg)
+        self.assertIn("stamp_detected", res)
+        self.assertIn("stamp_boxes", res)
+        self.assertIn("suspicious_stamp_splicing", res)
+        self.assertIsInstance(res["stamp_boxes"], list)
 
     def test_check_metadata(self):
         res = check_metadata(self.test_jpg)
@@ -73,6 +82,7 @@ class TestTamperingModule(unittest.TestCase):
         self.assertIn("ela", res)
         self.assertIn("metadata", res)
         self.assertIn("ai_detection", res)
+        self.assertIn("stamp_forensics", res)
         self.assertIn("tampering_likelihood", res)
         self.assertIn("risk_level", res)
         self.assertTrue(0.0 <= res["tampering_likelihood"] <= 100.0)
@@ -103,6 +113,7 @@ class TestTamperingModule(unittest.TestCase):
         self.assertIn("ela", data)
         self.assertIn("metadata", data)
         self.assertIn("ai_detection", data)
+        self.assertIn("stamp_forensics", data)
         self.assertTrue(0.0 <= data["tampering_likelihood"] <= 100.0)
 
         # 4. Access static ELA image via URL
@@ -110,7 +121,6 @@ class TestTamperingModule(unittest.TestCase):
         resp_img = client.get(ela_url)
         self.assertEqual(resp_img.status_code, 200)
         self.assertEqual(resp_img.headers["content-type"], "image/png")
-
 
 
 if __name__ == "__main__":

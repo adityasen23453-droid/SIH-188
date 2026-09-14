@@ -2,41 +2,96 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.pyd
 
-# Virtual environments & env files
+# Virtual environments
 venv/
 .venv/
 env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment files & secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
+!*.env.example
 
-# Next.js / Node
+# Next.js / Node.js
+node_modules/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/build/
+frontend/*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Distribution / packaging
+# Python distribution / packaging
 *.egg-info/
 dist/
 build/
+eggs/
+.eggs/
+*.egg
 
-# Uploaded & generated files
+# Testing & code quality caches
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Uploaded runtime artifacts (preserve directory structure via .gitkeep)
 backend/uploads/*
+!backend/uploads/**/.gitkeep
 !backend/uploads/.gitkeep
+!backend/uploads/ela/
+!backend/uploads/preprocessed/
+!backend/uploads/faces/
+!backend/uploads/scanned/
 backend/uploads/ela/*
 !backend/uploads/ela/.gitkeep
 backend/uploads/preprocessed/*
 !backend/uploads/preprocessed/.gitkeep
-backend/data/*.db
-!backend/data/.gitkeep
+backend/uploads/faces/*
+!backend/uploads/faces/.gitkeep
+backend/uploads/scanned/*
+!backend/uploads/scanned/.gitkeep
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
 
-# Paddle / Model caches
+# Machine Learning model caches & weights
 .paddlex/
 .paddleocr/
+.cache/
+huggingface/
+*.onnx
+*.pt
+*.pth
+*.bin
 
-# Operating System files
+# Temporary & system files
+*.tmp
+*.log
 .DS_Store
 Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.cursor/
+.gemini/

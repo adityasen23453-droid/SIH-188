@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, Loader2, ArrowLeft, AlertCircle, Shield, CheckCircle2, Award } from "lucide-react";
+import { Upload, FileText, Loader2, ArrowLeft, AlertCircle, Shield, CheckCircle2, Award, Layers } from "lucide-react";
 import { AnalyzeResponse } from "@/types";
 import { uploadAndAnalyzeDocument } from "@/lib/api";
 import { RiskBanner } from "@/components/RiskBanner";
@@ -10,16 +10,19 @@ import { DocumentPreview } from "@/components/DocumentPreview";
 import { ExtractedFieldsTable } from "@/components/ExtractedFieldsTable";
 import { ValidationResults } from "@/components/ValidationResults";
 import { TamperingAnalysis } from "@/components/TamperingAnalysis";
+import { BiometricVerification } from "@/components/BiometricVerification";
+import { BlockchainLedger } from "@/components/BlockchainLedger";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
-  const [documentType, setDocumentType] = useState<string>("passport");
+  const [documentType, setDocumentType] = useState<string>("auto");
   const [isDragOver, setIsDragOver] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeResponse | null>(null);
+  const [ledgerOpen, setLedgerOpen] = useState<boolean>(false);
 
   const handleFileChange = (file: File | null) => {
     if (!file) return;
@@ -95,17 +98,33 @@ export default function Home() {
             </div>
           </div>
 
-          {analysisResult && (
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleReset}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md transition-colors"
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setLedgerOpen(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-xl border border-slate-700 transition-colors shadow-xs cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4" />
-              New Screening
-            </motion.button>
-          )}
+              <Layers className="w-4 h-4 text-indigo-400" />
+              <span className="hidden sm:inline">Audit Ledger</span>
+              {analysisResult?.blockchain_receipt && (
+                <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] rounded font-mono">
+                  #{analysisResult.blockchain_receipt.block_index}
+                </span>
+              )}
+            </button>
+
+            {analysisResult && (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleReset}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                New Screening
+              </motion.button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -153,14 +172,20 @@ export default function Home() {
               <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 border border-slate-200/90 rounded-2xl shadow-xl">
                 {/* 1. Document Type Selector */}
                 <div>
-                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-slate-700 mb-3">
-                    1. Select Document Type
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">
+                      1. Document Type
+                    </label>
+                    <span className="text-[11px] font-mono text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md font-semibold">
+                      Auto-Detect Supported
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {[
+                      { id: "auto", label: "✨ Auto-Detect" },
                       { id: "passport", label: "Passport (MRZ)" },
-                      { id: "visa", label: "Visa Document" },
-                      { id: "id_card", label: "National ID Card" },
+                      { id: "visa", label: "Visa / Permit" },
+                      { id: "id_card", label: "National ID" },
                     ].map((type) => (
                       <motion.button
                         key={type.id}
@@ -168,7 +193,7 @@ export default function Home() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setDocumentType(type.id)}
-                        className={`py-3 px-3 text-xs font-mono font-bold uppercase tracking-wider border rounded-xl transition-all duration-200 ${
+                        className={`py-3 px-2 text-xs font-mono font-bold uppercase tracking-wider border rounded-xl transition-all duration-200 text-center ${
                           documentType === type.id
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-md font-black"
                             : "bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
@@ -278,6 +303,22 @@ export default function Home() {
               transition={{ duration: 0.3 }}
               className="space-y-8"
             >
+              {/* Document Classification Header Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 border border-slate-200 rounded-2xl shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500">
+                    Document Category:
+                  </span>
+                  <span className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono text-xs font-black uppercase tracking-wider">
+                    {analysisResult.blockchain_receipt?.document_type?.replace(/_/g, " ") || "AUTO-DETECTED"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 text-[11px] font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Hugging Face ViT & Multi-Signal Forensics Active</span>
+                </div>
+              </div>
+
               {/* Section 1: Risk Banner */}
               <RiskBanner
                 riskLevel={analysisResult.overall_risk_level}
@@ -289,20 +330,48 @@ export default function Home() {
               <DocumentPreview
                 originalImageUrl={filePreviewUrl || undefined}
                 elaImageUrl={analysisResult.tampering?.ela?.ela_image_url}
+                scannedImageUrl={analysisResult.scanned_image_url || undefined}
+                detectedRegions={analysisResult.detected_regions}
               />
 
               {/* Section 3: Extracted Fields Table */}
-              <ExtractedFieldsTable fields={analysisResult.extracted_fields} />
+              <ExtractedFieldsTable
+                fields={analysisResult.extracted_fields}
+                documentType={analysisResult.document_type}
+              />
 
               {/* Section 4: Validation Results */}
-              <ValidationResults validation={analysisResult.validation} />
+              <ValidationResults
+                validation={analysisResult.validation}
+                documentType={analysisResult.document_type}
+              />
 
               {/* Section 5: Tampering Analysis */}
               <TamperingAnalysis tampering={analysisResult.tampering} />
+
+              {/* Section 6: Biometric Verification & 1:N Cross-Border Search */}
+              <BiometricVerification
+                fileId={analysisResult.file_id}
+                portraitFace={analysisResult.portrait_face}
+                onVerificationComplete={(_, updatedBlock) => {
+                  if (updatedBlock) {
+                    setAnalysisResult((prev) =>
+                      prev ? { ...prev, blockchain_receipt: updatedBlock } : null
+                    );
+                  }
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Blockchain SHA-256 Merkle Ledger Explorer Modal */}
+      <BlockchainLedger
+        isOpen={ledgerOpen}
+        onClose={() => setLedgerOpen(false)}
+        latestBlock={analysisResult?.blockchain_receipt}
+      />
     </main>
   );
 }

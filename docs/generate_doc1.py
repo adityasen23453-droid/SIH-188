@@ -1,0 +1,776 @@
+import os
+import subprocess
+
+EDGE_PATH = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+if not os.path.exists(EDGE_PATH):
+    EDGE_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+HTML_CONTENT = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIH 26188 - System Architecture & Winning Strategy</title>
+<style>
+@page {
+    size: A4;
+    margin: 14mm 14mm 14mm 14mm;
+}
+* {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.55;
+    font-size: 9.6pt;
+    margin: 0;
+    padding: 0;
+}
+h1, h2, h3, h4 {
+    color: #0f172a;
+    font-weight: 700;
+    line-height: 1.25;
+    page-break-after: avoid;
+}
+h1 { font-size: 19pt; letter-spacing: -0.02em; margin-top: 0; }
+h2 {
+    font-size: 13pt;
+    color: #1e1b4b;
+    border-bottom: 1.5px solid #cbd5e1;
+    padding-bottom: 4px;
+    margin-top: 1.5em;
+}
+h3 { font-size: 11pt; color: #2563eb; margin-top: 1.1em; }
+h4 { font-size: 10pt; color: #334155; margin-top: 0.8em; }
+p { margin-top: 0.3em; margin-bottom: 0.7em; }
+ul, ol { margin-top: 0.3em; margin-bottom: 0.7em; padding-left: 20px; }
+li { margin-bottom: 0.25em; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.1em 0;
+    font-size: 8.7pt;
+    page-break-inside: avoid;
+}
+th, td {
+    padding: 6.5px 9px;
+    border: 1px solid #cbd5e1;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background-color: #0f172a;
+    color: #ffffff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 7.7pt;
+    letter-spacing: 0.05em;
+}
+tr:nth-child(even) td { background-color: #f8fafc; }
+code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 8.5pt;
+    background-color: #f1f5f9;
+    padding: 1.5px 4.5px;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+}
+pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 8.3pt;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    line-height: 1.45;
+}
+pre code { background-color: transparent; color: inherit; border: none; padding: 0; }
+.header-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.header-banner h1 { color: white; border-bottom: none; margin-bottom: 4px; font-size: 18pt; }
+.header-banner .meta {
+    font-size: 8.8pt;
+    color: #cbd5e1;
+    font-family: ui-monospace, monospace;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+}
+.header-banner .tag {
+    background-color: #3b82f6;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 7.8pt;
+}
+.callout {
+    border-left: 4px solid #3b82f6;
+    background-color: #eff6ff;
+    padding: 9px 13px;
+    margin: 0.9em 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 9.1pt;
+}
+.callout-warning { border-left-color: #f59e0b; background-color: #fffbeb; }
+.callout-danger { border-left-color: #ef4444; background-color: #fef2f2; }
+.callout-success { border-left-color: #10b981; background-color: #ecfdf5; }
+.callout-title {
+    font-weight: 700;
+    margin-bottom: 3px;
+    color: #0f172a;
+    font-size: 9.3pt;
+}
+.page-break { page-break-before: always; }
+.diagram-box {
+    margin: 1.2em 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    page-break-inside: avoid;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.diagram-caption {
+    font-size: 8.2pt;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 6px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.math-block {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: ui-monospace, monospace;
+    font-size: 9pt;
+    color: #0f172a;
+    margin: 0.8em 0;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+    <h1>AI-Based Fake Identity & Document Screening System</h1>
+    <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 10pt;">System Architecture, Document Scope & Hackathon Winning Blueprint</p>
+    <div class="meta">
+        <span><strong>Problem ID:</strong> 26188</span>
+        <span><strong>Ministry:</strong> Ministry of Home Affairs (MHA)</span>
+        <span><strong>Agency:</strong> Sashastra Seema Bal (SSB), Police II Division</span>
+        <span class="tag">Theme: Blockchain & Cybersecurity</span>
+    </div>
+</div>
+
+<h2>Executive Analysis: Understanding SIH Problem Statement 26188</h2>
+<ul>
+    <li><strong>Problem Statement ID:</strong> 26188</li>
+    <li><strong>Title:</strong> AI-Based Fake Identity & Document Screening System</li>
+    <li><strong>Ministry & Department:</strong> Ministry of Home Affairs (MHA) &mdash; Sashastra Seema Bal (SSB), Police II Division</li>
+    <li><strong>Theme:</strong> Blockchain & Cybersecurity</li>
+    <li><strong>Category:</strong> Software</li>
+</ul>
+
+<h3>The Operational Context: SSB Border Checkpoints</h3>
+<p>The client agency is <strong>Sashastra Seema Bal (SSB)</strong>. Unlike airport immigration counters (which handle mostly international ePassports), the SSB guards the <strong>1,751 km Indo-Nepal border</strong> and the <strong>699 km Indo-Bhutan border</strong>. These are open borders governed by historic bilateral treaties:</p>
+<ol>
+    <li><strong>Indian and Nepalese/Bhutanese citizens</strong> do not require a passport or visa to cross overland Integrated Check Posts (ICPs like Raxaul, Sonauli, Jogbani, Panitanki). They travel using domestic identification documents: <strong>Voter IDs (EPIC), Aadhaar cards, Driving Licenses, Embassy Identity Slips, and Border Transit Permits</strong>.</li>
+    <li><strong>Third-country nationals (foreigners)</strong> must present standard <strong>Passports, valid Indian Visas (e-Visa or sticker), and physical border entry/exit ink stamps</strong>.</li>
+    <li><strong>Core Threat Vectors:</strong> Trans-border smuggling syndicates, illegal immigration, and cross-border operatives frequently exploit this open border using <strong>counterfeit Voter IDs/Aadhaar cards, altered DOBs on permits, tampered immigration ink stamps, swapped portrait photos, and identity impersonation (using multiple identities under different names)</strong>.</li>
+    <li><strong>Theme Alignment:</strong> The problem is explicitly classified under <strong>Blockchain & Cybersecurity</strong>. Developing computer vision models alone will fail the evaluation criteria if the <strong>immutable audit trail, zero-knowledge verification, and tamper-evident data custody</strong> are missing.</li>
+</ol>
+
+<div class="callout callout-warning">
+    <div class="callout-title">Operational Imperative</div>
+    At peak transit hours, border checkpoints process thousands of crossings. Manual verification causes severe congestion. The screening solution must execute across OCR, forensic tamper analysis, facial biometrics, and registry validation within <strong>under 2.5 seconds</strong>.
+</div>
+
+<h2>1. Documents Verification Scope: What Documents Must Be Supported?</h2>
+<p>To cover the operational mandate of the SSB and Ministry of Home Affairs, the screening system must handle five distinct document classes:</p>
+
+<div class="diagram-box">
+    <svg viewBox="0 0 780 150" width="100%" height="150" xmlns="http://www.w3.org/2000/svg">
+        <rect x="230" y="5" width="320" height="32" rx="6" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+        <text x="390" y="26" fill="#ffffff" font-size="11" font-weight="700" font-family="sans-serif" text-anchor="middle">SIH 26188 DOCUMENT VERIFICATION SCOPE</text>
+        
+        <path d="M 390 37 L 390 52" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 75 52 L 705 52" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 75 52 L 75 67" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 235 52 L 235 67" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 52 L 390 67" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 545 52 L 545 67" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 705 52 L 705 67" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        
+        <!-- Nodes -->
+        <rect x="5" y="67" width="140" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="75" y="85" fill="#1e3a8a" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">1. PASSPORTS</text>
+        <text x="75" y="99" fill="#475569" font-size="8" font-family="sans-serif" text-anchor="middle">ICAO Doc 9303 (TD3)</text>
+        
+        <rect x="165" y="67" width="140" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="235" y="85" fill="#1e3a8a" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">2. VISAS</text>
+        <text x="235" y="99" fill="#475569" font-size="8" font-family="sans-serif" text-anchor="middle">e-Visa & Sticker Visas</text>
+
+        <rect x="320" y="67" width="140" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="390" y="85" fill="#1e3a8a" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">3. NATIONAL IDs</text>
+        <text x="390" y="99" fill="#475569" font-size="8" font-family="sans-serif" text-anchor="middle">Voter ID (EPIC) & Aadhaar</text>
+
+        <rect x="475" y="67" width="140" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="545" y="85" fill="#1e3a8a" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">4. DRIVING LICENSES</text>
+        <text x="545" y="99" fill="#475569" font-size="8" font-family="sans-serif" text-anchor="middle">Sarathi Format DL</text>
+
+        <rect x="635" y="67" width="140" height="42" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="705" y="85" fill="#1e3a8a" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">5. BORDER PERMITS</text>
+        <text x="705" y="99" fill="#475569" font-size="8" font-family="sans-serif" text-anchor="middle">Transit & Identity Slips</text>
+
+        <!-- Foundation banner -->
+        <rect x="40" y="120" width="700" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="390" y="136" fill="#334155" font-size="8.5" font-weight="600" font-family="sans-serif" text-anchor="middle">Cross-Border Land Border Checkpoints (Indo-Nepal & Indo-Bhutan Integrated Check Posts)</text>
+    </svg>
+    <div class="diagram-caption">Figure 1: Document Classification Taxonomy for Border Screening</div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 22%;">Document Category</th>
+            <th style="width: 20%;">Document Types</th>
+            <th style="width: 26%;">Key Fields Extracted</th>
+            <th style="width: 32%;">Specific Validation Logic</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>1. International Passports</strong></td>
+            <td>Standard TD3 Passports (36/60 pages)</td>
+            <td>Full Name, Passport No, Nationality, DOB, Expiry, Gender, Issuing State, MRZ Line 1 & Line 2.</td>
+            <td>&bull; ICAO Doc 9303 repeating 7-3-1 check digit algorithms (Passport number, DOB, Expiry, Composite).<br>&bull; VIZ-to-MRZ cross-field consistency check.<br>&bull; ISO 3166-1 alpha-3 country code validation.</td>
+        </tr>
+        <tr>
+            <td><strong>2. Visas & Entry Approvals</strong></td>
+            <td>Indian Sticker Visas, e-Visa Grant Letters</td>
+            <td>Visa Number, Visa Type (Tourist, Business, Transit), Valid From, Valid Until, Number of Entries, Stay Duration, Linked Passport Number.</td>
+            <td>&bull; Date bounds checking (<code>valid_until</code> &ge; <code>valid_from</code>).<br>&bull; Passport number cross-reference between visa and passport.<br>&bull; Allowed stay duration vs. calculated date window.</td>
+        </tr>
+        <tr>
+            <td><strong>3. National Identity Cards</strong></td>
+            <td><strong>Voter ID (EPIC)</strong> & <strong>Aadhaar Card</strong> <em>(Vital for Indo-Nepal/Bhutan transit)</em></td>
+            <td>Document ID, Full Name, Father's/Husband's Name, DOB / Year of Birth, Gender, Address.</td>
+            <td>&bull; <strong>Aadhaar:</strong> Verhoeff checksum algorithm on 12-digit UID.<br>&bull; <strong>Voter ID:</strong> Election Commission regex (3 alpha prefix + 7 numeric digits, e.g. <code>ABC1234567</code>).<br>&bull; VIZ name vs. database query.</td>
+        </tr>
+        <tr>
+            <td><strong>4. Driving Licenses</strong></td>
+            <td>State Transport (Sarathi format DL)</td>
+            <td>DL Number, Holder Name, DOB, Issue Date, Expiry Date, Vehicle Class (LMV/MCWG).</td>
+            <td>&bull; Regex structure check: 2-letter State Code + 2-digit RTO + 4-digit Year + 7-digit Serial Number.<br>&bull; Expiry validation against current date.</td>
+        </tr>
+        <tr>
+            <td><strong>5. Border Transit Permits</strong></td>
+            <td>Emergency Transit Slips, Embassy ID Slips, Overland Authorizations</td>
+            <td>Permit Reference ID, Designated Border Post (ICP), Valid Dates, Authorized Route.</td>
+            <td>&bull; ICP authority signature/stamp check.<br>&bull; Non-extendable date expiration check.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>2. The SIH 188 Winning Strategy: Why Teams Lose vs. How You Will Win</h2>
+<p>Judges from the Ministry of Home Affairs and border police divisions evaluate hundreds of presentations. The table below contrasts typical failed submissions with a winning approach:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 20%;">Evaluation Dimension</th>
+            <th style="width: 38%;">Why Typical Teams Lose</th>
+            <th style="width: 42%;">How You Will Win (The Gold Standard)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Scope Understanding</strong></td>
+            <td>They only demo an airport passport MRZ reader.</td>
+            <td>You demonstrate <strong>both international passports/visas AND Indian/Nepal border documents</strong> (Voter ID, DL, Transit Permits) tailored for the <strong>SSB</strong>.</td>
+        </tr>
+        <tr>
+            <td><strong>"Multiple Identities" Requirement</strong></td>
+            <td>They ignore it completely or treat it as a database text search.</td>
+            <td>You implement a <strong>1:N Biometric Vector Search (FAISS)</strong> that instantly flags when the <strong>same physical face</strong> appears under two different names or document numbers.</td>
+        </tr>
+        <tr>
+            <td><strong>Tampering Detection</strong></td>
+            <td>They use only Error Level Analysis (ELA) or a generic CNN with no explainability.</td>
+            <td>You combine a multi-signal ensemble: <strong>Pixel ELA Heatmap + EXIF Metadata Tool Detection + Hugging Face ViT AI Forgery Classifier + Ink Stamp Hue/Boundary Analysis</strong>.</td>
+        </tr>
+        <tr>
+            <td><strong>Blockchain Theme</strong></td>
+            <td>They stick a non-functional Web3/Ethereum logo on their slide or do nothing.</td>
+            <td>You demonstrate a <strong>Permissioned Cryptographic Audit Ledger</strong> storing document hashes, officer IDs, and risk decisions in an immutable SHA-256 Merkle chain.</td>
+        </tr>
+        <tr>
+            <td><strong>Explainable AI (XAI)</strong></td>
+            <td>The system just outputs "Risk: 85% - FAKE" with zero explanation.</td>
+            <td>The system outputs <strong>granular reason codes</strong>: <code>["MRZ DOB Checksum Failed", "Canva signature in EXIF", "Face Match 0.38 &lt; 0.60", "Aadhaar Verhoeff Failed"]</code>.</td>
+        </tr>
+        <tr>
+            <td><strong>Processing Speed</strong></td>
+            <td>The system takes 20+ seconds per scan, which fails at high-traffic border posts.</td>
+            <td>Complete asynchronous pipeline processes a document in <strong>under 2.5 seconds</strong>, meeting high passenger volume operational needs.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>3. Detailed System Architecture & Workflow Diagrams</h2>
+
+<h3>End-to-End Operational Workflow at Border Checkpoint</h3>
+<p>The complete flow from traveler arrival at the SSB ICP to risk assessment and ledger logging:</p>
+
+<div class="diagram-box">
+    <svg viewBox="0 0 780 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg">
+        <!-- Start -->
+        <rect x="270" y="10" width="240" height="30" rx="15" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+        <text x="390" y="29" fill="#ffffff" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">Traveler Arrives at Border Checkpoint</text>
+        
+        <path d="M 390 40 L 390 55" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+        
+        <!-- Capture -->
+        <rect x="230" y="55" width="320" height="32" rx="6" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="390" y="75" fill="#ffffff" font-size="9.5" font-weight="600" font-family="sans-serif" text-anchor="middle">Document Capture (Scan/Upload) & Live Webcam Stream</text>
+        
+        <path d="M 390 87 L 390 102" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <!-- Preproc -->
+        <rect x="220" y="102" width="340" height="32" rx="6" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="390" y="122" fill="#ffffff" font-size="9.5" font-weight="600" font-family="sans-serif" text-anchor="middle">OpenCV 4-Point Perspective Transform & CLAHE Enhancement</text>
+
+        <!-- Branching line -->
+        <path d="M 390 134 L 390 148" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 120 148 L 660 148" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 120 148 L 120 162" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 148 L 390 162" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 660 148 L 660 162" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <!-- Branch 1: OCR & Rules -->
+        <rect x="20" y="162" width="200" height="50" rx="6" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="120" y="181" fill="#c7d2fe" font-size="9.5" font-weight="700" font-family="sans-serif" text-anchor="middle">1. OCR & Rule Validation</text>
+        <text x="120" y="194" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; PassportEye MRZ (7-3-1 checks)</text>
+        <text x="120" y="205" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; PaddleOCR VIZ + Verhoeff check</text>
+
+        <!-- Branch 2: Tamper Detection -->
+        <rect x="290" y="162" width="200" height="50" rx="6" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="390" y="181" fill="#c7d2fe" font-size="9.5" font-weight="700" font-family="sans-serif" text-anchor="middle">2. Tampering Detection</text>
+        <text x="390" y="194" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; JPEG ELA Quality-90 Heatmap</text>
+        <text x="390" y="205" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; Hugging Face ViT Forgery Classifier</text>
+
+        <!-- Branch 3: Face Verification -->
+        <rect x="560" y="162" width="200" height="50" rx="6" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="660" y="181" fill="#c7d2fe" font-size="9.5" font-weight="700" font-family="sans-serif" text-anchor="middle">3. Biometric Verification</text>
+        <text x="660" y="194" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; 1:1 Cosine Similarity Match</text>
+        <text x="660" y="205" fill="#ffffff" font-size="8" font-family="sans-serif" text-anchor="middle">&bull; 1:N FAISS Duplicate Identity Search</text>
+
+        <!-- Merging Lines -->
+        <path d="M 120 212 L 120 228" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 212 L 390 228" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 660 212 L 660 228" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 120 228 L 660 228" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 228 L 390 242" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <!-- Registry -->
+        <rect x="240" y="242" width="300" height="30" rx="6" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="390" y="261" fill="#ffffff" font-size="9.5" font-weight="600" font-family="sans-serif" text-anchor="middle">Query Mock Registry (Stolen IDs, Revocations, Watchlist)</text>
+
+        <path d="M 390 272 L 390 286" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <!-- Risk Fusion -->
+        <rect x="220" y="286" width="340" height="32" rx="6" fill="#701a75" stroke="#d946ef" stroke-width="1.5"/>
+        <text x="390" y="306" fill="#ffffff" font-size="10" font-weight="700" font-family="sans-serif" text-anchor="middle">Explainable Evidence Fusion & Risk Engine (0-100 Score)</text>
+
+        <!-- Decision Split -->
+        <path d="M 390 318 L 390 330" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 130 330 L 650 330" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 130 330 L 130 344" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 330 L 390 344" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 650 330 L 650 344" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <!-- Outcomes -->
+        <rect x="35" y="344" width="190" height="32" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+        <text x="130" y="364" fill="#ffffff" font-size="9" font-weight="700" font-family="sans-serif" text-anchor="middle">LOW RISK (&lt;30) &bull; ADMIT</text>
+
+        <rect x="295" y="344" width="190" height="32" rx="6" fill="#78350f" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="390" y="364" fill="#ffffff" font-size="9" font-weight="700" font-family="sans-serif" text-anchor="middle">MEDIUM (30-60) &bull; 2ND INSPECT</text>
+
+        <rect x="555" y="344" width="190" height="32" rx="6" fill="#881337" stroke="#f43f5e" stroke-width="1.5"/>
+        <text x="650" y="364" fill="#ffffff" font-size="9" font-weight="700" font-family="sans-serif" text-anchor="middle">HIGH (&gt;60) &bull; DETAIN & ALERT</text>
+
+        <!-- To Ledger -->
+        <path d="M 130 376 L 130 390" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 376 L 390 390" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 650 376 L 650 390" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 130 390 L 650 390" stroke="#64748b" stroke-width="1.5" fill="none"/>
+        <path d="M 390 390 L 390 400" stroke="#64748b" stroke-width="1.5" fill="none"/>
+
+        <rect x="210" y="400" width="360" height="25" rx="5" fill="#14532d" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="390" y="416" fill="#ffffff" font-size="8.8" font-weight="600" font-family="sans-serif" text-anchor="middle">Cryptographic Blockchain Ledger Event Commit (SHA-256 Hash + Audit Trail)</text>
+    </svg>
+    <div class="diagram-caption">Figure 2: End-to-End Operational Screening Workflow</div>
+</div>
+
+<div class="page-break"></div>
+
+<h3>Detailed System Technical Architecture</h3>
+<p>Layered micro-architecture connecting the Next.js frontend, FastAPI backend, AI models, and cryptographic ledger:</p>
+
+<div class="diagram-box">
+    <svg viewBox="0 0 780 340" width="100%" height="340" xmlns="http://www.w3.org/2000/svg">
+        <!-- 5 Layer Blocks -->
+        <!-- Layer 1: Presentation -->
+        <rect x="15" y="10" width="750" height="52" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="30" y="28" fill="#38bdf8" font-size="8.5" font-weight="700" font-family="sans-serif">PRESENTATION LAYER (Next.js 16 + Tailwind CSS v4 + Framer Motion)</text>
+        <rect x="30" y="34" width="165" height="22" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+        <text x="112" y="49" fill="#f8fafc" font-size="8" font-family="sans-serif" text-anchor="middle">Officer Web Console</text>
+        <rect x="210" y="34" width="165" height="22" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+        <text x="292" y="49" fill="#f8fafc" font-size="8" font-family="sans-serif" text-anchor="middle">HTML5 Webcam Stream</text>
+        <rect x="390" y="34" width="175" height="22" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+        <text x="477" y="49" fill="#f8fafc" font-size="8" font-family="sans-serif" text-anchor="middle">ELA Heatmap Dual-Viewer</text>
+        <rect x="580" y="34" width="170" height="22" rx="4" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+        <text x="665" y="49" fill="#f8fafc" font-size="8" font-family="sans-serif" text-anchor="middle">Animated Risk Gauge</text>
+
+        <!-- Layer 2: API Gateway -->
+        <rect x="15" y="74" width="750" height="52" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="30" y="92" fill="#a5b4fc" font-size="8.5" font-weight="700" font-family="sans-serif">API GATEWAY & ORCHESTRATION LAYER (FastAPI Python Backend)</text>
+        <rect x="30" y="98" width="110" height="22" rx="4" fill="#312e81" stroke="#4f46e5" stroke-width="1"/>
+        <text x="85" y="113" fill="#e0e7ff" font-size="7.5" font-family="monospace" text-anchor="middle">POST /api/upload</text>
+        <rect x="150" y="98" width="115" height="22" rx="4" fill="#312e81" stroke="#4f46e5" stroke-width="1"/>
+        <text x="207" y="113" fill="#e0e7ff" font-size="7.5" font-family="monospace" text-anchor="middle">POST /api/extract</text>
+        <rect x="275" y="98" width="120" height="22" rx="4" fill="#312e81" stroke="#4f46e5" stroke-width="1"/>
+        <text x="335" y="113" fill="#e0e7ff" font-size="7.5" font-family="monospace" text-anchor="middle">POST /api/validate</text>
+        <rect x="405" y="98" width="145" height="22" rx="4" fill="#312e81" stroke="#4f46e5" stroke-width="1"/>
+        <text x="477" y="113" fill="#e0e7ff" font-size="7.5" font-family="monospace" text-anchor="middle">POST /api/tamper-check</text>
+        <rect x="560" y="98" width="190" height="22" rx="4" fill="#312e81" stroke="#4f46e5" stroke-width="1"/>
+        <text x="655" y="113" fill="#e0e7ff" font-size="7.5" font-family="monospace" text-anchor="middle">POST /api/analyze (Unified)</text>
+
+        <!-- Layer 3: AI & CV Engine -->
+        <rect x="15" y="138" width="750" height="58" rx="6" fill="#022c22" stroke="#34d399" stroke-width="1.5"/>
+        <text x="30" y="156" fill="#34d399" font-size="8.5" font-weight="700" font-family="sans-serif">COMPUTER VISION & DEEP LEARNING ENGINES</text>
+        <rect x="30" y="162" width="135" height="26" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+        <text x="97" y="178" fill="#d1fae5" font-size="7.5" font-family="sans-serif" text-anchor="middle">OpenCV Deskew & CLAHE</text>
+        <rect x="175" y="162" width="140" height="26" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+        <text x="245" y="178" fill="#d1fae5" font-size="7.5" font-family="sans-serif" text-anchor="middle">PassportEye MRZ + PaddleOCR</text>
+        <rect x="325" y="162" width="145" height="26" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+        <text x="397" y="178" fill="#d1fae5" font-size="7.5" font-family="sans-serif" text-anchor="middle">ELA Heatmap + HF ViT Model</text>
+        <rect x="480" y="162" width="135" height="26" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+        <text x="547" y="178" fill="#d1fae5" font-size="7.5" font-family="sans-serif" text-anchor="middle">ArcFace 512-d Biometrics</text>
+        <rect x="625" y="162" width="125" height="26" rx="4" fill="#064e3b" stroke="#059669" stroke-width="1"/>
+        <text x="687" y="178" fill="#d1fae5" font-size="7.5" font-family="sans-serif" text-anchor="middle">XAI Evidence Fusion</text>
+
+        <!-- Layer 4: Storage -->
+        <rect x="15" y="208" width="750" height="52" rx="6" fill="#3b0764" stroke="#c084fc" stroke-width="1.5"/>
+        <text x="30" y="226" fill="#e9d5ff" font-size="8.5" font-weight="700" font-family="sans-serif">DATA & IDENTITY STORE (Confidential Off-Chain Storage)</text>
+        <rect x="30" y="232" width="220" height="22" rx="4" fill="#581c87" stroke="#7e22ce" stroke-width="1"/>
+        <text x="140" y="247" fill="#f3e8ff" font-size="8" font-family="sans-serif" text-anchor="middle">Encrypted Uploads & ELA PNGs</text>
+        <rect x="270" y="232" width="230" height="22" rx="4" fill="#581c87" stroke="#7e22ce" stroke-width="1"/>
+        <text x="385" y="247" fill="#f3e8ff" font-size="8" font-family="sans-serif" text-anchor="middle">SQLite Blacklist & Watchlist DB</text>
+        <rect x="520" y="232" width="230" height="22" rx="4" fill="#581c87" stroke="#7e22ce" stroke-width="1"/>
+        <text x="635" y="247" fill="#f3e8ff" font-size="8" font-family="sans-serif" text-anchor="middle">FAISS Biometric Index (1:N Search)</text>
+
+        <!-- Layer 5: Blockchain -->
+        <rect x="15" y="272" width="750" height="52" rx="6" fill="#1c1917" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="30" y="290" fill="#fcd34d" font-size="8.5" font-weight="700" font-family="sans-serif">CYBERSECURITY & TRUST LAYER (Blockchain & Tamper-Evident Ledger)</text>
+        <rect x="30" y="296" width="220" height="22" rx="4" fill="#451a03" stroke="#b45309" stroke-width="1"/>
+        <text x="140" y="311" fill="#fef3c7" font-size="8" font-family="sans-serif" text-anchor="middle">SHA-256 Merkle Block Chain</text>
+        <rect x="270" y="296" width="230" height="22" rx="4" fill="#451a03" stroke="#b45309" stroke-width="1"/>
+        <text x="385" y="311" fill="#fef3c7" font-size="8" font-family="sans-serif" text-anchor="middle">Hyperledger Fabric Dual-Org Trust</text>
+        <rect x="520" y="296" width="230" height="22" rx="4" fill="#451a03" stroke="#b45309" stroke-width="1"/>
+        <text x="635" y="311" fill="#fef3c7" font-size="8" font-family="sans-serif" text-anchor="middle">Immutable Audit Event Verification</text>
+    </svg>
+    <div class="diagram-caption">Figure 3: Multi-Tier Technical Architecture</div>
+</div>
+
+<h2>4. Deep Dive into the 6 Core Modules</h2>
+
+<h3>Module 1: Universal OCR & Document Understanding</h3>
+<ul>
+    <li><strong>Perspective Correction & Preprocessing:</strong> Automatically rescales input images, computes Gaussian blur, detects quadrilateral document borders using <code>cv2.approxPolyDP</code>, and maps them to a top-down view with <code>cv2.warpPerspective</code>. CLAHE eliminates uneven illumination and checkpoint glare.</li>
+    <li><strong>Dual-Zone Extraction:</strong>
+        <ul>
+            <li><strong>MRZ Extraction:</strong> Utilizes <code>PassportEye</code> and <code>Tesseract</code> with tight character whitelisting and scoped positional letter-to-digit auto-correction (e.g. <code>O</code>&rarr;<code>0</code>, <code>I</code>&rarr;<code>1</code>, <code>B</code>&rarr;<code>8</code> in numeric slices).</li>
+            <li><strong>VIZ Extraction:</strong> Utilizes <code>PaddleOCR</code> for free-text fields (holder name, address, father's name) and regex parser for Indian national documents (Voter ID, Aadhaar, Driving License).</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Module 2: Document Validation (Rules & Standards)</h3>
+<ul>
+    <li><strong>ICAO Doc 9303 Checksums:</strong> Computes standard 7-3-1 modulo 10 check digits across passport number, DOB, expiry date, and composite line 2 check:
+        <div class="math-block">Check Digit = (&sum; Value(c<sub>i</sub>) &times; w<sub>i mod 3</sub>) mod 10, where w &isin; {7, 3, 1}</div>
+    </li>
+    <li><strong>Aadhaar Verhoeff Algorithm:</strong> Implements the dihedral group D<sub>5</sub> multiplication table to validate 12-digit Aadhaar UID numbers and detect transpositions.</li>
+    <li><strong>VIZ-to-MRZ Cross-Check:</strong> Detects cases where text in the visual zone was altered (e.g. Photoshop name change) without updating the MRZ.</li>
+</ul>
+
+<h3>Module 3: Tampering Detection (Core AI Innovation)</h3>
+<ul>
+    <li><strong>Error Level Analysis (ELA):</strong> Re-compresses the image at JPEG Quality 90 and calculates absolute pixel variance:
+        <div class="math-block">Diff(x,y) = | I<sub>original</sub>(x,y) - I<sub>resaved</sub>(x,y) |</div>
+        Generates an amplified ELA heatmap where modified or spliced regions appear highlighted due to compression mismatch.
+    </li>
+    <li><strong>Pretrained ViT Forgery Classifier:</strong> Deploys a Hugging Face Vision Transformer (<code>zodumair/document-forgery-detector</code>) over alpha-blended ELA images to output AI tampering confidence.</li>
+    <li><strong>EXIF Metadata Inspection:</strong> Scans metadata headers for graphic editing tools (Photoshop, GIMP, Canva, Snapseed) and flags stripped metadata.</li>
+    <li><strong>Stamp & Seal Forensics:</strong> Analyzes ink color distribution (HSV color clustering) and edge continuity of border entry/exit stamps.</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h3>Module 4: Biometric Face Verification & Multi-Identity Detection</h3>
+<ul>
+    <li><strong>1:1 Verification (Impersonation Defense):</strong> Auto-crops the document portrait, captures a live face frame from the checkpoint webcam, computes 512-dimensional ArcFace embeddings, and evaluates cosine similarity:
+        <div class="math-block">Cosine Similarity = (u &bull; v) / ( ||u|| ||v|| )</div>
+        Threshold calibrated: &ge; 0.65 (Match), 0.50&ndash;0.64 (Uncertain), &lt; 0.50 (Mismatch / Impersonation).
+    </li>
+    <li><strong>1:N Duplicate Identity Detection (Winning Feature):</strong> Every screened face is indexed in an in-memory <strong>FAISS</strong> vector database. If a live face matches an existing record with similarity &gt; 0.70 under a <em>different name or passport number</em>, a <strong>"CRITICAL: Duplicate Identity / Alias Detected"</strong> security alarm is raised immediately.</li>
+</ul>
+
+<h3>Module 5: Explainable Evidence Fusion & Risk-Scoring Engine</h3>
+<p>Combines multi-modal signals into a calibrated composite risk score between 0.0 and 100.0:</p>
+<div class="math-block">Overall Risk Score = min( 100, Base Tampering Score + &sum; Penalties )</div>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 35%;">Triggered Signal</th>
+            <th style="width: 20%;">Penalty Points</th>
+            <th style="width: 45%;">Diagnostic Reason Code</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Blacklisted / Stolen Registry Match</td>
+            <td><strong>+50.0 Points</strong></td>
+            <td><code>"Passport blacklisted: Reported stolen"</code></td>
+        </tr>
+        <tr>
+            <td>Biometric Face Mismatch</td>
+            <td><strong>+30.0 Points</strong></td>
+            <td><code>"Biometric mismatch: similarity below 0.50"</code></td>
+        </tr>
+        <tr>
+            <td>MRZ Checksum Failure</td>
+            <td><strong>+25.0 Points</strong></td>
+            <td><code>"MRZ check digit mismatch on field(s): DOB, Composite"</code></td>
+        </tr>
+        <tr>
+            <td>Document Expired</td>
+            <td><strong>+20.0 Points</strong></td>
+            <td><code>"Document expired on 2024-02-14"</code></td>
+        </tr>
+        <tr>
+            <td>EXIF Editing Software Detected</td>
+            <td><strong>+15.0 Points</strong></td>
+            <td><code>"Editing software signature detected: Adobe Photoshop"</code></td>
+        </tr>
+        <tr>
+            <td>VIZ-to-MRZ Inconsistency</td>
+            <td><strong>+15.0 Points</strong></td>
+            <td><code>"Visual name does not match MRZ encoded name"</code></td>
+        </tr>
+        <tr>
+            <td>AI Forgery Model Alert</td>
+            <td><strong>+20.0 Points</strong></td>
+            <td><code>"AI ViT detector: High probability of digital forgery"</code></td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Module 6: Blockchain & Cybersecurity Trust Layer</h3>
+<ul>
+    <li><strong>Zero Biometrics On-Chain:</strong> Complies with DPDP Act. Never stores names, photos, or raw biometric arrays on-chain.</li>
+    <li><strong>Cryptographic Block Payload:</strong>
+        <div class="math-block">Block = { Index, Timestamp, PrevHash, SHA-256(Doc), RiskScore, OfficerID, Nonce }</div>
+    </li>
+    <li><strong>Dual-Authority Architecture:</strong> Simulates Issuing Authority (Org 1) and Border Screening Authority (Org 2) with immutable append-only verification.</li>
+</ul>
+
+<h2>5. Production vs. Hackathon Prototype Feasibility</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 25%;">System Component</th>
+            <th style="width: 38%;">Production Vision (Real World)</th>
+            <th style="width: 37%;">Hackathon Winning Implementation (In Repo)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Document Input</strong></td>
+            <td>Specialized 3M/Thales multi-spectral border document scanners (UV, White, IR illumination).</td>
+            <td>Smartphone camera upload + top-down webcam capture + OpenCV perspective deskewing.</td>
+        </tr>
+        <tr>
+            <td><strong>ePassport Chip</strong></td>
+            <td>Physical ISO 14443 NFC smartcard reader querying ICAO PKD CSCA certificates.</td>
+            <td>Simulated Cryptographic LDS Validator (decodes mock signed payload and validates hash integrity).</td>
+        </tr>
+        <tr>
+            <td><strong>National Databases</strong></td>
+            <td>Live CCTNS, IVFRT, Interpol SLTD, and UIDAI e-KYC restricted APIs.</td>
+            <td>Curated SQLite Mock Registry (<code>blacklist.db</code>) with active, expired, stolen, and revoked test cases.</td>
+        </tr>
+        <tr>
+            <td><strong>Face Biometrics</strong></td>
+            <td>NIST FRTE-compliant certified biometric turnstile camera with active 3D IR liveness.</td>
+            <td>Live WebRTC webcam stream + ArcFace deep embeddings + 1:N FAISS vector search.</td>
+        </tr>
+        <tr>
+            <td><strong>Blockchain</strong></td>
+            <td>Multi-node Hyperledger Fabric network with raft ordering service across MHA data centers.</td>
+            <td>Cryptographic Tamper-Evident SHA-256 Merkle Ledger with verification API and chaincode contracts.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>6. The 10 Live Demonstration Test Scenarios</h2>
+<p>Curated test matrix designed to demonstrate all functional requirements during the live judging round:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 6%;">#</th>
+            <th style="width: 25%;">Test Case Scenario</th>
+            <th style="width: 45%;">Triggered Module Signals</th>
+            <th style="width: 24%;">Expected Outcome</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Genuine Clean Passport</strong></td>
+            <td>All 7-3-1 check digits valid, VIZ matches MRZ, face match 0.88, no ELA anomalies.</td>
+            <td><span class="badge badge-green">LOW (Score: 8) &bull; PASS</span></td>
+        </tr>
+        <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Expired Travel Document</strong></td>
+            <td>Date validator flags expiration; checksums valid; face matches.</td>
+            <td><span class="badge badge-amber">MEDIUM (Score: 48) &bull; 2ND</span></td>
+        </tr>
+        <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Altered Date of Birth</strong></td>
+            <td>MRZ DOB check digit fails (computed &ne; expected); ELA shows local variance.</td>
+            <td><span class="badge badge-red">HIGH (Score: 78) &bull; REVIEW</span></td>
+        </tr>
+        <tr>
+            <td><strong>4</strong></td>
+            <td><strong>Edited Name in VIZ</strong></td>
+            <td>Printed name altered in VIZ; VIZ-to-MRZ cross-check flags discrepancy.</td>
+            <td><span class="badge badge-red">HIGH (Score: 74) &bull; REVIEW</span></td>
+        </tr>
+        <tr>
+            <td><strong>5</strong></td>
+            <td><strong>Digital Forgery (Canva/PS)</strong></td>
+            <td>EXIF metadata reveals editing software; ViT AI classifier flags forgery probability &gt; 80%.</td>
+            <td><span class="badge badge-red">HIGH (Score: 84) &bull; REVIEW</span></td>
+        </tr>
+        <tr>
+            <td><strong>6</strong></td>
+            <td><strong>Swapped Portrait Photo</strong></td>
+            <td>Document face does not match live webcam; cosine similarity 0.32 &lt; 0.50 threshold.</td>
+            <td><span class="badge badge-red">HIGH (Score: 88) &bull; REVIEW</span></td>
+        </tr>
+        <tr>
+            <td><strong>7</strong></td>
+            <td><strong>Multiple Identities (1:N)</strong></td>
+            <td>Live face matches an existing traveler in FAISS index under a different name/passport.</td>
+            <td><span class="badge badge-red">HIGH (Score: 96) &bull; ALARM</span></td>
+        </tr>
+        <tr>
+            <td><strong>8</strong></td>
+            <td><strong>Blacklisted Stolen Passport</strong></td>
+            <td>Passport number matched in SQLite stolen travel document database.</td>
+            <td><span class="badge badge-red">HIGH (Score: 98) &bull; DETAIN</span></td>
+        </tr>
+        <tr>
+            <td><strong>9</strong></td>
+            <td><strong>Invalid Aadhaar Number</strong></td>
+            <td>12-digit Aadhaar UID fails mathematical Verhoeff checksum algorithm.</td>
+            <td><span class="badge badge-red">HIGH (Score: 76) &bull; REJECT</span></td>
+        </tr>
+        <tr>
+            <td><strong>10</strong></td>
+            <td><strong>Tampered Checkpoint Stamp</strong></td>
+            <td>Visa stamp color histogram and boundary edge continuity fail authenticity bounds.</td>
+            <td><span class="badge badge-amber">MEDIUM (Score: 56) &bull; 2ND</span></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>7. Implementation Roadmap: What to Build Next</h2>
+<ol>
+    <li><strong>Module 4 (Biometric Face Verification & 1:N FAISS Duplicate Search):</strong>
+        <ul>
+            <li>Integrate document portrait auto-cropping using OpenCV / Haar cascade.</li>
+            <li>Add HTML5 webcam video capture component in Next.js frontend.</li>
+            <li>Implement FAISS vector index in FastAPI backend to detect duplicate travelers.</li>
+        </ul>
+    </li>
+    <li><strong>Module 2 Addition (VIZ-to-MRZ Cross-Check & National ID Validation):</strong>
+        <ul>
+            <li>Cross-verify visual OCR text against MRZ fields.</li>
+            <li>Implement Aadhaar Verhoeff checksum and Voter ID regex verification.</li>
+        </ul>
+    </li>
+    <li><strong>Module 6 (Cryptographic Audit Ledger):</strong>
+        <ul>
+            <li>Build immutable SHA-256 block ledger in backend with <code>/api/ledger/verify</code> endpoint.</li>
+            <li>Add verification badge and digital receipt drawer in Next.js UI.</li>
+        </ul>
+    </li>
+    <li><strong>10-Case Test Suite:</strong> Assemble high-resolution synthetic test documents corresponding to the 10 demonstration scenarios.</li>
+</ol>
+
+</body>
+</html>
+"""
+
+html_file = r"d:\SIH 188\docs\doc1_architecture_and_strategy.html"
+pdf_file = r"d:\SIH 188\SIH_188_System_Architecture_and_Strategy.pdf"
+
+with open(html_file, "w", encoding="utf-8") as f:
+    f.write(HTML_CONTENT)
+
+print(f"Wrote HTML to {html_file}. Generating PDF...")
+
+cmd = [
+    EDGE_PATH,
+    "--headless=new",
+    "--disable-gpu",
+    "--run-all-compositor-stages-before-draw",
+    "--no-pdf-header-footer",
+    f"--print-to-pdf={pdf_file}",
+    html_file
+]
+subprocess.run(cmd, check=True)
+
+if os.path.exists(pdf_file) and os.path.getsize(pdf_file) > 1000:
+    print(f"SUCCESS: Generated {pdf_file} ({os.path.getsize(pdf_file):,} bytes)")
+else:
+    print("ERROR: PDF was not generated properly.")
+

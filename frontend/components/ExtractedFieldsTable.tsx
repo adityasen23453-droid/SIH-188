@@ -7,20 +7,49 @@ import { ExtractedFields } from "@/types";
 
 interface ExtractedFieldsTableProps {
   fields: ExtractedFields;
+  documentType?: string;
 }
 
 export const ExtractedFieldsTable: React.FC<ExtractedFieldsTableProps> = ({
   fields,
+  documentType,
 }) => {
   const [copied, setCopied] = useState(false);
 
+  const getDocNumberLabel = () => {
+    const dt = (documentType || "").toLowerCase();
+    if (dt === "aadhaar") return "Aadhaar UID Number";
+    if (dt === "voter_id") return "Voter ID (EPIC) Number";
+    if (dt === "driving_license") return "Driving License Number";
+    if (dt === "visa") return "Visa Control Number";
+    return "Passport / ID Number";
+  };
+
+  const getNationalityLabel = () => {
+    const dt = (documentType || "").toLowerCase();
+    if (dt === "aadhaar") return "Country / Authority (UIDAI)";
+    if (dt === "voter_id") return "Country / Authority (ECI)";
+    if (dt === "driving_license") return "Country / Authority (MoRTH)";
+    return "Nationality Code";
+  };
+
+  const idNumberVal = fields.passport_number || fields.id_number || fields.aadhaar_number || fields.voter_id || fields.dl_number || fields.visa_number;
+  const expiryVal = (fields.date_of_expiry === "LIFETIME" || (documentType === "aadhaar" && !fields.date_of_expiry))
+    ? "Lifetime Validity (Per UIDAI Act)"
+    : fields.date_of_expiry;
+
   const displayFields = [
-    { label: "Full Name", key: "name", confKey: "name_confidence" },
-    { label: "Passport / ID Number", key: "passport_number", confKey: "passport_number_confidence" },
-    { label: "Nationality Code", key: "nationality", confKey: "nationality_confidence" },
-    { label: "Date of Birth", key: "date_of_birth" },
-    { label: "Date of Expiry", key: "date_of_expiry" },
-    { label: "Gender", key: "gender", noteKey: "gender_note" },
+    { label: "Full Name", key: "name", value: fields.name, confKey: "name_confidence" },
+    { label: getDocNumberLabel(), key: "id_number", value: idNumberVal, confKey: "passport_number_confidence" },
+    { label: getNationalityLabel(), key: "nationality", value: fields.nationality, confKey: "nationality_confidence" },
+    { label: "Date of Birth", key: "date_of_birth", value: fields.date_of_birth },
+    { label: "Date of Expiry / Validity", key: "date_of_expiry", value: expiryVal },
+    {
+      label: "Gender",
+      key: "gender",
+      value: fields.gender === "M" ? "MALE (M)" : fields.gender === "F" ? "FEMALE (F)" : fields.gender,
+      noteKey: "gender_note"
+    },
   ];
 
   const handleCopyMrz = () => {
@@ -61,8 +90,8 @@ export const ExtractedFieldsTable: React.FC<ExtractedFieldsTableProps> = ({
 
       {/* Grid of Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayFields.map(({ label, key, confKey, noteKey }, idx) => {
-          const rawVal = fields[key];
+        {displayFields.map(({ label, key, value, confKey, noteKey }, idx) => {
+          const rawVal = value !== undefined ? value : fields[key];
           const confVal = confKey ? fields[confKey] : undefined;
           const noteVal = noteKey ? fields[noteKey] : undefined;
 
