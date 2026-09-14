@@ -110,6 +110,9 @@ def run_ela(image_path: str, output_dir: str = None) -> dict:
         os.makedirs(output_dir, exist_ok=True)
 
         with Image.open(image_path) as orig_img:
+            is_png = (getattr(orig_img, "format", "") == "PNG") or image_path.lower().endswith(".png")
+            note = "Image converted from PNG to JPEG baseline for ELA analysis." if is_png else None
+
             rgb_img = orig_img.convert("RGB")
             if max(rgb_img.size) > 1200:
                 rgb_img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
@@ -133,16 +136,23 @@ def run_ela(image_path: str, output_dir: str = None) -> dict:
                 amplified_diff = ImageEnhance.Brightness(diff_img).enhance(enhance_scale)
 
                 base_name = os.path.splitext(os.path.basename(image_path))[0]
-                ela_filename = f"{base_name}_ela.jpg"
+                ela_filename = f"{base_name}_ela.png"
                 ela_filepath = os.path.join(output_dir, ela_filename)
-                amplified_diff.save(ela_filepath, "JPEG")
+                amplified_diff.save(ela_filepath, format="PNG")
 
-                return {
+                # In-memory blend for ViT model (eliminates duplicate disk I/O and recompression)
+                blended_for_vit = Image.blend(rgb_img, amplified_diff.convert("RGB"), alpha=0.3)
+
+                res = {
                     "ela_score": ela_score,
                     "ela_image_path": ela_filepath,
                     "ela_image_url": f"/ela-images/{ela_filename}",
-                    "tamper_boxes": tamper_boxes
+                    "tamper_boxes": tamper_boxes,
+                    "_blended_img": blended_for_vit
                 }
+                if note:
+                    res["note"] = note
+                return res
 
     except Exception as e:
         return {
@@ -368,7 +378,7 @@ def extract_noise_residual_features(image_bgr: np.ndarray) -> dict:
         }
 
 
-def check_ai_manipulation(image_path: str) -> dict:
+def check_ai_manipulation(image_path: str, blended_img: Image.Image = None) -> dict:
     """
     Hugging Face Vision Transformer (zodumair/document-forgery-detector) + High-Frequency Noise Forensics:
     Runs ViT model over alpha-blended ELA composite map (alpha=0.3).
@@ -377,9 +387,9 @@ def check_ai_manipulation(image_path: str) -> dict:
     try:
         if not os.path.exists(image_path):
             return {
-                "label": "real",
-                "confidence": 0.5,
-                "ai_generated_likelihood": 0.0,
+                "label": None,
+                "confidence": None,
+                "ai_generated_likelihood": None,
                 "error": f"Image file not found: {image_path}"
             }
 
@@ -388,10 +398,25 @@ def check_ai_manipulation(image_path: str) -> dict:
 
         model, processor = get_forgery_model_and_processor()
         if model is not None and processor is not None:
-            blended_img = compute_ela_for_model(image_path)
+            if blended_img is None:
+                blended_img = compute_ela_for_model(image_path)
+
+            # Pre-scale directly to 224x224 to make ViT preprocessing and tensor transfer instantaneous
+            if blended_img.size != (224, 224):
+                blended_img = blended_img.resize((224, 224), Image.Resampling.BILINEAR)
+
             inputs = processor(images=blended_img, return_tensors="pt")
-            with torch.no_grad():
-                outputs = model(**inputs)
+
+            # Throttle torch CPU threads during inference to prevent starving PaddleOCR/FastAPI worker
+            prev_num_threads = torch.get_num_threads()
+            try:
+                if prev_num_threads > 2:
+                    torch.set_num_threads(2)
+                with torch.no_grad():
+                    outputs = model(**inputs)
+            finally:
+                if prev_num_threads > 2:
+                    torch.set_num_threads(prev_num_threads)
 
             probs = F.softmax(outputs.logits, dim=-1)[0]
             id2label = model.config.id2label or {0: "real", 1: "forged"}
@@ -426,9 +451,9 @@ def check_ai_manipulation(image_path: str) -> dict:
 
     except Exception as e:
         return {
-            "label": "real",
-            "confidence": 0.5,
-            "ai_generated_likelihood": 10.0,
+            "label": None,
+            "confidence": None,
+            "ai_generated_likelihood": None,
             "error": str(e)
         }
 
@@ -440,8 +465,9 @@ def run_tampering_detection(image_path: str) -> dict:
     EXIF metadata tool detection, border stamp HSV forensics, and noise residual disparity.
     """
     ela_res = run_ela(image_path)
+    blended = ela_res.pop("_blended_img", None)
     meta_res = check_metadata(image_path)
-    ai_res = check_ai_manipulation(image_path)
+    ai_res = check_ai_manipulation(image_path, blended_img=blended)
     stamp_res = analyze_stamp_region(image_path)
 
     ela_score = ela_res.get("ela_score", 0.0)
@@ -467,7 +493,7 @@ def run_tampering_detection(image_path: str) -> dict:
         ela_based_score += 8.0
 
     # Points for Hugging Face ViT model prediction
-    ai_score = ai_res.get("ai_generated_likelihood", 0.0)
+    ai_score = ai_res.get("ai_generated_likelihood")
     noise_anomaly = ai_res.get("noise_residuals", {}).get("noise_splicing_detected", False)
 
     if ai_score is not None:

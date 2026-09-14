@@ -143,6 +143,9 @@ def detect_and_fix_orientation(image: np.ndarray) -> tuple[np.ndarray, int]:
                 return cv2.rotate(image, cv2.ROTATE_180), 180
             elif best_face_rot == 270:
                 return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE), 270
+        elif f0_score > 0:
+            # An upright frontal portrait is already present at 0° - skip slow Tesseract OSD
+            return image, 0
     except Exception:
         pass
 
@@ -267,17 +270,17 @@ def create_document_context(image_path: str, max_dim: int = 1200) -> DocumentCon
     if img is None:
         raise ValueError(f"Could not decode image at {image_path}")
 
-    # 2b. Auto-Orientation detection & correction
-    img, rot_angle = detect_and_fix_orientation(img)
-    rot_applied = (rot_angle != 0)
-    rot_note = f"Auto-orientation corrected ({rot_angle}° rotation applied); " if rot_applied else ""
-
-    # 3. Resize once if > max_dim
+    # 2a. Scale image immediately if > max_dim so orientation and contour operators run in sub-second time
     orig_h, orig_w = img.shape[:2]
     curr_max = max(orig_h, orig_w)
     if curr_max > max_dim:
         scale = max_dim / float(curr_max)
         img = cv2.resize(img, (int(orig_w * scale), int(orig_h * scale)), interpolation=cv2.INTER_AREA)
+
+    # 2b. Auto-Orientation detection & correction (now runs on scaled image!)
+    img, rot_angle = detect_and_fix_orientation(img)
+    rot_applied = (rot_angle != 0)
+    rot_note = f"Auto-orientation corrected ({rot_angle}° rotation applied); " if rot_applied else ""
 
     # 4. Deskew
     pts = find_document_contour(img)

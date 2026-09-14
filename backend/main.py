@@ -32,7 +32,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def prewarm_models():
-    """Pre-warms PaddleOCR in background thread at server startup so uploads run with zero cold-start latency."""
+    """Pre-warms PaddleOCR and ViT Forgery Detector in background thread at server startup so uploads run with zero cold-start latency."""
     import threading
 
     def _warmup():
@@ -45,6 +45,13 @@ def prewarm_models():
             print("[INFO] PaddleOCR models pre-warmed into RAM successfully.")
         except Exception as e:
             print(f"[WARN] OCR prewarm notice: {e}")
+
+        try:
+            from modules.tampering import get_forgery_model_and_processor
+            get_forgery_model_and_processor()
+            print("[INFO] ViT Forgery Detector pre-warmed into RAM successfully.")
+        except Exception as e:
+            print(f"[WARN] ViT prewarm notice: {e}")
 
     threading.Thread(target=_warmup, daemon=True).start()
 
