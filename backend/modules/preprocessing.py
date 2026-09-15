@@ -94,27 +94,7 @@ def detect_and_fix_orientation(image: np.ndarray) -> tuple[np.ndarray, int]:
 
     h, w = image.shape[:2]
 
-    # Heuristic 1: ICAO MRZ Inversion Check (Fast and deterministic)
-    # If the top 35% strip contains MRZ chevron signals (e.g. '<<' or 'P<' or 'V<'),
-    # the passport / visa is upside-down (180°).
-    try:
-        import pytesseract
-        tesseract_bin = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-        if os.path.exists(tesseract_bin):
-            pytesseract.pytesseract.tesseract_cmd = tesseract_bin
-
-        top_strip = image[0:int(h * 0.35), 0:w]
-        top_scale = 800.0 / w if w > 800 else 1.0
-        if top_scale < 1.0:
-            top_strip = cv2.resize(top_strip, (int(w * top_scale), int(h * 0.35 * top_scale)), interpolation=cv2.INTER_AREA)
-        top_gray = cv2.cvtColor(top_strip, cv2.COLOR_BGR2GRAY)
-        top_text = pytesseract.image_to_string(top_gray, config="--psm 6")
-        if "<<" in top_text or "P<" in top_text or "V<" in top_text or "I<" in top_text or "C<" in top_text:
-            return cv2.rotate(image, cv2.ROTATE_180), 180
-    except Exception:
-        pass
-
-    # Heuristic 2: Multi-Angle Face Detection (0°, 90°, 180°, 270°)
+    # Heuristic 1: Fast Multi-Angle Face Detection (0°, 90°, 180°, 270°) with multi-face aggregate weighting
     try:
         cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         face_cascade = cv2.CascadeClassifier(cascade_path)
@@ -125,31 +105,53 @@ def detect_and_fix_orientation(image: np.ndarray) -> tuple[np.ndarray, int]:
         def get_face_score(g_img):
             faces = face_cascade.detectMultiScale(g_img, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
             if len(faces) == 0:
-                return 0
-            return max(f[2] * f[3] for f in faces)
+                return 0, 0
+            total_area = sum(f[2] * f[3] for f in faces)
+            return len(faces) * 2000 + total_area, len(faces)
 
-        f0_score = get_face_score(gray_thumb)
-        f90_score = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_90_CLOCKWISE))
-        f180_score = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_180))
-        f270_score = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        score0, cnt0 = get_face_score(gray_thumb)
+        # Fast path early exit: If face is detected upright at 0° with good confidence, exit in < 15ms!
+        if cnt0 > 0 and score0 > 3000:
+            return image, 0
 
-        face_scores = {0: f0_score, 90: f90_score, 180: f180_score, 270: f270_score}
-        best_face_rot = max(face_scores, key=face_scores.get)
+        score90, cnt90 = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_90_CLOCKWISE))
+        score180, cnt180 = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_180))
+        score270, cnt270 = get_face_score(cv2.rotate(gray_thumb, cv2.ROTATE_90_COUNTERCLOCKWISE))
 
-        if best_face_rot != 0 and face_scores[best_face_rot] > 0 and (f0_score == 0 or face_scores[best_face_rot] > f0_score * 1.5):
-            if best_face_rot == 90:
+        face_scores = {0: score0, 90: score90, 180: score180, 270: score270}
+        best_rot = max(face_scores, key=face_scores.get)
+
+        if best_rot != 0 and face_scores[best_rot] > score0 * 1.3 and face_scores[best_rot] > 2500:
+            if best_rot == 90:
                 return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE), 90
-            elif best_face_rot == 180:
+            elif best_rot == 180:
                 return cv2.rotate(image, cv2.ROTATE_180), 180
-            elif best_face_rot == 270:
+            elif best_rot == 270:
                 return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE), 270
-        elif f0_score > 0:
-            # An upright frontal portrait is already present at 0° - skip slow Tesseract OSD
+        elif cnt0 > 0:
             return image, 0
     except Exception:
         pass
 
-    # Heuristic 3: Tesseract OSD fallback
+    # Heuristic 2: ICAO MRZ Inversion Check (Controlled fallback when face detection had no signal)
+    try:
+        import pytesseract
+        tesseract_bin = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        if os.path.exists(tesseract_bin):
+            pytesseract.pytesseract.tesseract_cmd = tesseract_bin
+
+        top_strip = image[0:int(h * 0.35), 0:w]
+        top_scale = 500.0 / w if w > 500 else 1.0
+        if top_scale < 1.0:
+            top_strip = cv2.resize(top_strip, (int(w * top_scale), int(h * 0.35 * top_scale)), interpolation=cv2.INTER_AREA)
+        top_gray = cv2.cvtColor(top_strip, cv2.COLOR_BGR2GRAY)
+        top_text = pytesseract.image_to_string(top_gray, config="--psm 6")
+        if "<<" in top_text or "P<" in top_text or "V<" in top_text or "I<" in top_text or "C<" in top_text:
+            return cv2.rotate(image, cv2.ROTATE_180), 180
+    except Exception:
+        pass
+
+    # Heuristic 3: Tesseract OSD fallback (only if OSD confidence is high >= 2.0)
     try:
         from PIL import Image
         rgb_thumb = cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB)

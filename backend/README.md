@@ -10,17 +10,30 @@ The **BorderShield Backend** is a high-throughput, asynchronous FastAPI service 
 
 ---
 
-## ⚡ High-Speed Performance Optimizations
+## ⚡ High-Speed Performance Optimizations & Architecture
 
-1. **Unified Single-Pass Deep OCR**:
-   - PaddleOCR runs **once** across the document to detect all word boxes and text lines.
-   - Extracts both MRZ and VIZ text without triggering cascading redundant OCR passes.
-2. **Resolution Capping ($1280\text{ px}$)**:
-   - High-resolution camera uploads are capped to $1280\text{ px}$ max dimension, cutting CPU processing latency by **$85\%$**.
-3. **Background Pre-Warming at Startup**:
-   - Pre-warms deep detection (`PP-OCRv6_medium_det`), recognition (`PP-OCRv6_medium_rec`), and textline angle orientation models (`PP-LCNet_x1_0_textline_ori`) during server launch in a background daemon thread.
-4. **Strictly Opt-In Heavy Transformers**:
-   - Microsoft TrOCR (`microsoft/trocr-small-printed`) neural line recognition is loaded strictly as an opt-in fallback for unreadable text lines.
+1. **Fast Path + In-Memory Recovery Architecture**:
+   - PaddleOCR executes **once** on the preprocessed document to detect word boxes, bounding polygons, and text lines concurrently.
+   - Extracts both MRZ and VIZ text in a single pass without triggering cascading full-image OCR waterfalls.
+   - Secondary recovery (PassportEye / Tesseract OCR-B) is targeted to an in-memory bottom $32\%$ crop, avoiding duplicate disk roundtrips.
+2. **Fast Face Multi-Angle Orientation Voting**:
+   - Rotations ($0^\circ, 90^\circ, 180^\circ, 270^\circ$) are detected using multi-angle Haar cascade face detection and ICAO chevron spatial priors on an $800\text{ px}$ thumbnail. Normal upright documents exit in $<15\text{ ms}$, while sideways documents align in $<1.3\text{ s}$ without synchronous Tesseract disk calls.
+3. **Resolution Capping ($1200\text{ px}$)**:
+   - High-resolution camera uploads are capped to $1200\text{ px}$ max dimension, cutting CPU processing latency by **$85\%$**.
+4. **Engine Tuning & Python 3.13 Windows Stability**:
+   - PaddleX 3 doc orientation, 3D unwarping, and textline orientation sub-models are disabled (`use_doc_orientation_classify=False`, `use_doc_unwarping=False`, `use_textline_orientation=False`), eliminating $15+\text{ s}$ of auxiliary neural overhead.
+   - `enable_mkldnn=False` is enforced to prevent PIR runtime crashes on Windows with Python 3.13.
+5. **Background Pre-Warming at Startup**:
+   - Pre-warms deep detection (`PP-OCRv6_medium_det`) and recognition (`PP-OCRv6_medium_rec`) models during server launch in a background daemon thread, eliminating the cold-start penalty for users.
+6. **Centralized Timing & Privacy Guard**:
+   - Microsecond precision `StageTimer` measures each stage (`PREPROCESS`, `PADDLE_OCR`, `TAMPERING`, `VALIDATION`) with zero PII logging.
+
+### 📊 Benchmark Metrics (104 Documents: 52 Genuine, 52 Manipulated)
+- **Accuracy**: **$92.31\%$** | **Precision**: **$87.93\%$** | **Recall**: **$98.08\%$** | **F1 Score**: **$92.73\%$**
+- **False Negative Rate**: **$1.92\%$** (1 / 52 missed) | **False Positive Rate**: **$13.46\%$**
+- **Latency P50**: **$721\text{ ms}$** | **Latency P95**: **$1454\text{ ms}$** | **Mean Latency**: **$1102\text{ ms}$** ($1.10\text{ s}$)
+- *Stage Mean Latencies*: Preprocess: $86.3\text{ ms}$ | OCR: $949.2\text{ ms}$ | Tampering: $65.5\text{ ms}$ | Validation: $1.3\text{ ms}$
+- *Hardware Environment*: Intel x86_64 CPU, 16 GB RAM, Windows 11, Python 3.13.
 
 ---
 

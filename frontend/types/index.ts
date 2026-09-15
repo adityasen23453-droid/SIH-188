@@ -271,6 +271,5 @@ export interface AnalyzeResponse {
   scanned_image_url?: string;
   detected_regions?: DetectedRegion[];
   blockchain_receipt?: BlockchainBlock;
-  processing_time_sec?: number;
 }
 

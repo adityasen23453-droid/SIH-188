@@ -1,6 +1,5 @@
 import os
 import uuid
-import time
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, File, UploadFile, Form, BackgroundTasks
@@ -11,6 +10,7 @@ from modules.ocr import run_ocr
 from modules.validation import run_validation
 from modules.tampering import run_tampering_detection
 from modules.preprocessing import detect_and_correct_document, create_document_context
+from modules.timing import StageTimer
 from modules.biometrics import verify_face_1to1_and_1toN
 from modules.blockchain import (
     commit_inspection_block,
@@ -166,12 +166,16 @@ async def tamper_check_document(file_id: str):
 
 @app.post("/api/analyze/{file_id}")
 async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
+    timer = StageTimer(document_id=file_id[:8] if file_id else None)
     file_info = DB_FILES.get(file_id)
     if not file_info:
         return JSONResponse(status_code=404, content={"error": "File not found"})
 
     # Phase 3: Shared In-Memory Preprocessing (decode once, resize once, deskew once)
+    timer.start_stage("PREPROCESS")
     ctx = create_document_context(file_info["file_path"], max_dim=1200)
+    timer.end_stage("PREPROCESS")
+
     proc_path = ctx.processed_image_path
     prep_res = {
         "processed_image_path": ctx.processed_image_path,
@@ -185,12 +189,16 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
         "bounding_box": ctx.face_bbox
     }
 
-    # Phase 5: Multi-Core Parallel Execution (OCR and Tampering in ThreadPool)
+    # Phase 5: Multi-Core Parallel Execution (reusing in-memory clahe_bgr matrix)
+    timer.start_stage("OCR_&_TAMPERING")
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor(max_workers=2) as pool:
-        ocr_task = loop.run_in_executor(pool, run_ocr, proc_path, file_info["document_type"], face_info, file_info["file_path"], ctx.document_quad, file_id)
+        ocr_task = loop.run_in_executor(
+            pool, run_ocr, proc_path, file_info["document_type"], face_info, file_info["file_path"], ctx.document_quad, file_id, ctx.clahe_bgr
+        )
         tamp_task = loop.run_in_executor(pool, run_tampering_detection, proc_path)
         ocr_res, tampering_res = await asyncio.gather(ocr_task, tamp_task)
+    timer.end_stage("OCR_&_TAMPERING")
 
     ocr_res["preprocessing"] = prep_res
     tampering_res["preprocessing"] = prep_res
@@ -200,11 +208,13 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
     file_info["tampering_result"] = tampering_res
 
     # Phase 6: Validation (MRZ, Verhoeff, VIZ-to-MRZ, Registry)
+    timer.start_stage("VALIDATION")
     validation_res = run_validation(
         ocr_res,
         stamp_forensics=tampering_res.get("stamp_forensics"),
         image_path=file_info.get("file_path")
     )
+    timer.end_stage("VALIDATION")
     validation_res["preprocessing"] = prep_res
 
     # Phase 8: Multi-Signal Risk Orchestration Engine
@@ -354,6 +364,11 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
         officer_id="SSB-OFFICER-7429"
     )
 
+    timer.print_summary(
+        fast_path=(ocr_res.get("method_used") != "generic_ocr_fallback"),
+        recovery_used=ocr_res.get("method_used", "none")
+    )
+
     return {
         "file_id": file_id,
         "document_type": file_info["document_type"],
@@ -368,7 +383,8 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
         "summary_flags": summary_flags,
         "blockchain_receipt": blockchain_receipt,
         "scanned_image_url": ocr_res.get("scanned_image_url"),
-        "detected_regions": ocr_res.get("detected_regions", [])
+        "detected_regions": ocr_res.get("detected_regions", []),
+        "pipeline_timings": timer.to_dict()
     }
 
 

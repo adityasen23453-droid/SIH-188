@@ -82,6 +82,8 @@ huggingface/
 # Temporary & system files
 *.tmp
 *.log
+scratch/
+backend/scratch/
 .DS_Store
 Thumbs.db
 ehthumbs.db

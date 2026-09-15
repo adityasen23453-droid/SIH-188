@@ -15,12 +15,67 @@ _face_cascade = None
 
 
 def get_ocr_engine():
-    """Lazy-loads PaddleOCR engine with caching and textline orientation enabled."""
+    """
+    Optimized PaddleOCR engine initializer (PP-OCRv6):
+    - use_doc_orientation_classify=False: Document context already deskews and orients.
+    - use_doc_unwarping=False: Document contour perspective warp already unwarps ID boundary.
+    - use_textline_orientation=False: Skips per-line 90/180/270 rotation classifier on upright documents.
+    - enable_mkldnn=False: Required on Python 3.13 Windows PIR executor to prevent NotImplementedError.
+    - lang='en'
+    """
     global _ocr_engine
     if _ocr_engine is None:
         from paddleocr import PaddleOCR
-        _ocr_engine = PaddleOCR(use_textline_orientation=True, lang="en", enable_mkldnn=False)
+        _ocr_engine = PaddleOCR(
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+            enable_mkldnn=False,
+            lang="en"
+        )
     return _ocr_engine
+
+
+def extract_paddle_items_from_result(result) -> list[tuple[list, str, float]]:
+    """
+    Unified parser supporting both modern PaddleX 3 (PP-OCRv6 OCRResult dict)
+    and classic PaddleOCR v2 list-of-tuples format.
+    Returns: list of (pts, text, confidence).
+    """
+    items = []
+    if not result or not isinstance(result, list) or result[0] is None:
+        return items
+
+    first = result[0]
+    if hasattr(first, "get") or isinstance(first, dict):
+        rec_texts = first.get("rec_texts", [])
+        rec_scores = first.get("rec_scores", [])
+        rec_polys = first.get("rec_polys", [])
+        rec_boxes = first.get("rec_boxes", [])
+        for idx, text in enumerate(rec_texts):
+            t = str(text).strip()
+            if not t:
+                continue
+            s = float(rec_scores[idx]) if idx < len(rec_scores) else 0.90
+            if idx < len(rec_polys):
+                pts = rec_polys[idx]
+                if hasattr(pts, "tolist"):
+                    pts = pts.tolist()
+            elif idx < len(rec_boxes):
+                b = rec_boxes[idx]
+                pts = [[int(b[0]), int(b[1])], [int(b[2]), int(b[1])], [int(b[2]), int(b[3])], [int(b[0]), int(b[3])]]
+            else:
+                pts = [[0, 0], [10, 0], [10, 10], [0, 10]]
+            items.append((pts, t, s))
+    elif isinstance(first, list):
+        for item in first:
+            if item and len(item) >= 2 and item[0] and item[1]:
+                pts = item[0]
+                text = str(item[1][0]).strip()
+                conf = float(item[1][1]) if len(item[1]) > 1 else 0.90
+                if text:
+                    items.append((pts, text, conf))
+    return items
 
 
 _trocr_proc = None
@@ -394,27 +449,21 @@ def extract_mrz_with_tesseract(image_path: str) -> dict | None:
         return None
 
 
-def extract_mrz_with_paddleocr(image_path: str) -> dict | None:
+def extract_mrz_with_paddleocr(image_path: str, img_crop: np.ndarray = None) -> dict | None:
     """Recovers MRZ lines using PaddleOCR deep scene text detection with baseline grouping."""
     try:
         ocr = get_ocr_engine()
-        img = cv2.imread(image_path)
+        img = img_crop if img_crop is not None else cv2.imread(image_path)
         if img is None:
             return None
 
         result = ocr.ocr(img)
-        if not result or not isinstance(result, list) or result[0] is None:
+        paddle_items = extract_paddle_items_from_result(result)
+        if not paddle_items:
             return None
 
         boxes = []
-        for item in result[0]:
-            if not item or len(item) < 2:
-                continue
-            box_pts = item[0]
-            text_conf = item[1]
-            if not text_conf or len(text_conf) < 1:
-                continue
-            text = str(text_conf[0]).strip()
+        for box_pts, text, conf in paddle_items:
             if not text:
                 continue
             y_center = sum(pt[1] for pt in box_pts) / len(box_pts)
@@ -454,59 +503,57 @@ def extract_mrz_with_paddleocr(image_path: str) -> dict | None:
         return None
 
 
-def extract_passport(image_path: str, fallback_image_path: str = None, mrz_candidates: list[str] = None) -> dict:
+def extract_passport(
+    image_path: str,
+    fallback_image_path: str = None,
+    mrz_candidates: list[str] = None,
+    image_bgr: np.ndarray = None
+) -> dict:
     """
-    Cascaded Passport MRZ Extractor:
-    1. Pre-Scanned MRZ Candidates: Disambiguates and parses whole-image scan tokens.
-    2. Fast-Path: PassportEye bottom 28% strip (<200ms).
-    3. Fallback: PassportEye full image.
-    4. Fallback: Tesseract OCR-B with adaptive binarization.
-    5. Fallback: PaddleOCR deep scene text detection.
-    6. Fallback: Re-try PaddleOCR / Tesseract on uncropped original image.
+    Targeted Fast-Path + In-Memory Recovery Passport/Visa MRZ Extractor:
+    1. Pre-Scanned MRZ Candidates: Disambiguates and parses whole-image scan tokens (< 5ms).
+    2. Targeted In-Memory ROI: Crops bottom 32% strip into in-memory buffer without disk I/O (< 150ms).
+    3. Targeted Tesseract Fallback: Runs OCR-B only on small bottom crop if needed (< 200ms).
+    4. Bounded Recovery: Avoids redundant full-image PaddleOCR re-scans.
     """
     if mrz_candidates:
         line1, line2, line3 = disambiguate_mrz_lines(mrz_candidates)
         if line1 and line2:
             scanned_mrz = parse_mrz_line_tokens(line1, line2, line3)
             if scanned_mrz and (scanned_mrz.get("passport_number") or scanned_mrz.get("mrz_line2")):
-                # Return immediately from deep scan tokens without blocking on heavy full-image PassportEye morphology
                 return scanned_mrz
 
     mrz = None
+    img = image_bgr if image_bgr is not None else cv2.imread(image_path)
+    mrz_strip = None
 
-    # 2. Fast-Path: Try bottom 28% strip with PassportEye (<200ms)
-    try:
-        img = cv2.imread(image_path)
-        if img is not None:
+    # 2. Targeted In-Memory ROI Recovery: Bottom 32% strip via in-memory stream (< 150ms)
+    if img is not None:
+        try:
+            import io
             h, w = img.shape[:2]
-            mrz_strip = img[int(h * 0.70):h, 0:w]
-            temp_strip_path = f"{image_path}_mrz_strip.jpg"
-            cv2.imwrite(temp_strip_path, mrz_strip)
-            try:
-                mrz = read_mrz(temp_strip_path)
-            finally:
-                if os.path.exists(temp_strip_path):
-                    os.remove(temp_strip_path)
-    except Exception:
-        mrz = None
+            mrz_strip = img[int(h * 0.68):h, 0:w]
+            success, buf = cv2.imencode(".png", mrz_strip)
+            if success:
+                bio = io.BytesIO(buf.tobytes())
+                mrz = read_mrz(bio)
+        except Exception:
+            mrz = None
 
-    # 3. Tesseract OCR-B strip fallback (<250ms)
+    # 3. Targeted Tesseract OCR-B strip fallback (< 200ms)
     if mrz is None or getattr(mrz, "valid_score", 0) <= 0:
         tess_res = extract_mrz_with_tesseract(image_path)
         if tess_res and (tess_res.get("mrz_line2") or tess_res.get("passport_number")):
             return tess_res
 
-    # 4. PaddleOCR deep text fallback (only if mrz_candidates was not provided)
-    if (mrz is None or getattr(mrz, "valid_score", 0) <= 0) and not mrz_candidates:
-        paddle_res = extract_mrz_with_paddleocr(image_path)
+    # 4. Targeted PaddleOCR on small strip crop (only if mrz_candidates was not provided)
+    if (mrz is None or getattr(mrz, "valid_score", 0) <= 0) and not mrz_candidates and mrz_strip is not None:
+        paddle_res = extract_mrz_with_paddleocr(image_path, img_crop=mrz_strip)
         if paddle_res and (paddle_res.get("mrz_line2") or paddle_res.get("passport_number")):
             return paddle_res
 
-    # 5. Fallback on original uncropped image (only if mrz_candidates was not provided)
+    # 5. Controlled fallback on original uncropped image only if text is completely absent
     if (mrz is None or getattr(mrz, "valid_score", 0) <= 0) and not mrz_candidates and fallback_image_path and os.path.exists(fallback_image_path) and fallback_image_path != image_path:
-        paddle_fallback = extract_mrz_with_paddleocr(fallback_image_path)
-        if paddle_fallback and (paddle_fallback.get("mrz_line2") or paddle_fallback.get("passport_number")):
-            return paddle_fallback
         tess_fallback = extract_mrz_with_tesseract(fallback_image_path)
         if tess_fallback and (tess_fallback.get("mrz_line2") or tess_fallback.get("passport_number")):
             return tess_fallback
@@ -545,17 +592,26 @@ def extract_passport(image_path: str, fallback_image_path: str = None, mrz_candi
     dob = mrz_dict.get("date_of_birth")
     expiry = mrz_dict.get("expiration_date")
 
-    # If PassportEye returned unparseable DOB or Expiry, rescue via Line 2 landmark
-    if mrz_line2 and (not dob or not str(dob).isdigit() or not expiry or not str(expiry).isdigit()):
+    def _is_valid_mrz_date(s: str) -> bool:
+        if not s or len(str(s)) != 6 or not str(s).isdigit():
+            return False
+        mm = int(str(s)[2:4])
+        dd = int(str(s)[4:6])
+        return 1 <= mm <= 12 and 1 <= dd <= 31
+
+    # If PassportEye returned unparseable or out-of-range DOB or Expiry, rescue via Line 2 landmark
+    if mrz_line2 and (not _is_valid_mrz_date(dob) or not _is_valid_mrz_date(expiry)):
         lm = re.search(r"([A-Z<]{3})([0-9]{6})([0-9<])([MF<])([0-9]{6})", mrz_line2)
         if lm:
             lm_start = lm.start()
-            if not dob or not str(dob).isdigit():
+            if not _is_valid_mrz_date(dob):
                 dob = lm.group(2)
             if not nationality or len(nationality) != 3 or not nationality.isalpha():
                 nationality = lm.group(1).replace("<", "")
-            if not expiry or not str(expiry).isdigit():
+            if not _is_valid_mrz_date(expiry):
                 expiry = lm.group(5)
+            if not gender and lm.group(4) in ["M", "F"]:
+                gender = lm.group(4)
             if not pass_num or len(pass_num) < 3:
                 raw_num = mrz_line2[:lm_start].rstrip("<")
                 if len(raw_num) > 0:
@@ -630,7 +686,8 @@ def classify_document_type(raw_text: list[str], image_path: str = None) -> str:
 def scan_document_regions(
     image_path: str,
     fallback_image_path: str = None,
-    face_info: dict = None
+    face_info: dict = None,
+    image_bgr: np.ndarray = None
 ) -> dict:
     """
     Whole-Document Deep Scene Scanning & Semantic Region Localization Engine:
@@ -643,7 +700,7 @@ def scan_document_regions(
     raw_lines = []
     mrz_candidates = []
 
-    img = cv2.imread(image_path)
+    img = image_bgr if image_bgr is not None else cv2.imread(image_path)
     if img is None:
         return {
             "detected_regions": [],
@@ -660,49 +717,31 @@ def scan_document_regions(
     try:
         ocr = get_ocr_engine()
         result = ocr.ocr(img)
-        if result and isinstance(result, list) and result[0] is not None:
-            first = result[0]
-            if isinstance(first, list):
-                for item in first:
-                    if item and len(item) >= 2 and item[0] and item[1]:
-                        pts = item[0]
-                        text = str(item[1][0]).strip()
-                        conf = float(item[1][1]) if len(item[1]) > 1 else 0.9
-                        if text:
-                            paddle_items.append((pts, text, conf))
+        paddle_items = extract_paddle_items_from_result(result)
     except Exception:
         paddle_items = []
 
-    # Fallback 1: Deep scene scan on original uncropped image if processed image yielded few regions
-    if len(paddle_items) < 4 and fallback_image_path and os.path.exists(fallback_image_path) and fallback_image_path != image_path:
+    # Controlled Fallback 1: Deep scene scan on original image only if PaddleOCR returned ZERO text regions
+    if not paddle_items and fallback_image_path and os.path.exists(fallback_image_path) and fallback_image_path != image_path:
         try:
             fb_img = cv2.imread(fallback_image_path)
             if fb_img is not None:
                 ocr = get_ocr_engine()
                 fb_res = ocr.ocr(fb_img)
-                if fb_res and isinstance(fb_res, list) and fb_res[0] is not None:
-                    fb_first = fb_res[0]
-                    if isinstance(fb_first, list):
-                        fb_items = []
-                        for item in fb_first:
-                            if item and len(item) >= 2 and item[0] and item[1]:
-                                pts = item[0]
-                                text = str(item[1][0]).strip()
-                                conf = float(item[1][1]) if len(item[1]) > 1 else 0.9
-                                if text:
-                                    fb_items.append((pts, text, conf))
-                        if len(fb_items) > len(paddle_items):
-                            paddle_items = fb_items
-                            img = fb_img
-                            img_h, img_w = img.shape[:2]
-                            engine_used = "paddleocr_deep_scan_original"
+                fb_items = extract_paddle_items_from_result(fb_res)
+                if len(fb_items) > len(paddle_items):
+                    paddle_items = fb_items
+                    img = fb_img
+                    img_h, img_w = img.shape[:2]
+                    engine_used = "paddleocr_deep_scan_original"
         except Exception:
             pass
 
-    # Fallback 2: Tesseract image_to_data if PaddleOCR returned nothing
+    # Controlled Fallback 2: Tesseract image_to_data if PaddleOCR returned nothing
     if not paddle_items:
         try:
-            tess_data = pytesseract.image_to_data(Image.open(image_path), output_type=pytesseract.Output.DICT)
+            pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            tess_data = pytesseract.image_to_data(pil_img, output_type=pytesseract.Output.DICT)
             n_boxes = len(tess_data.get("text", []))
             for i in range(n_boxes):
                 text = str(tess_data["text"][i]).strip()
@@ -891,13 +930,14 @@ def generate_scanned_green_overlay(
     image_path: str,
     detected_regions: list[dict],
     document_quad: list = None,
-    output_path: str = None
+    output_path: str = None,
+    image_bgr: np.ndarray = None
 ) -> str:
     """
     Renders border-grade HUD green scanning map with corner reticles,
     cyan MRZ zone, emerald biometric portrait, and amber consular stamps.
     """
-    img = cv2.imread(image_path)
+    img = image_bgr.copy() if image_bgr is not None else cv2.imread(image_path)
     if img is None:
         return image_path
 
@@ -1128,27 +1168,34 @@ def extract_document_fields(image_path: str, document_type: str, fallback_image_
         # Dynamic label-based name extraction (multilingual ICAO standard)
         surname = None
         given = None
+        label_kw = {"AND", "GIVEN", "NAMES", "NAME", "NOM", "NOME", "PRENOMS", "APELLIDOS", "PASSPORT", "PASSAPORTE", "COUNTRY", "REPUBLIC", "SURNAME"}
         for idx, t in enumerate(raw_text):
             tu = t.upper().strip()
             if re.search(r"\b(?:SURNAME|SOBRENOME|NOM|APELLIDOS|NACHNAME|COGNOME)\b", tu):
-                m = re.search(r"(?:SURNAME|SOBRENOME|NOM|APELLIDOS|NACHNAME|COGNOME)\s*[:/\-]?\s*([A-Z\s]{2,})", t, re.IGNORECASE)
-                if m and len(m.group(1).strip()) > 1 and not re.search(r"\b(?:PASSPORT|PASSAPORTE|COUNTRY|REPUBLIC)\b", m.group(1), re.I):
-                    surname = m.group(1).strip()
+                m = re.search(r"(?:SURNAME|SOBRENOME|NOM|APELLIDOS|NACHNAME|COGNOME)\s*[:/\-]?\s*([A-Za-z\s]{2,})", t, re.IGNORECASE)
+                val = m.group(1).strip() if m else ""
+                val_words = set(re.split(r"[^A-Za-z]+", val.upper())) - {""}
+                if val and len(val) > 1 and not val_words.issubset(label_kw):
+                    surname = val
                 elif idx + 1 < len(raw_text):
                     cand = raw_text[idx + 1].strip()
-                    if len(cand) > 1 and cand.isupper() and not any(lbl in cand for lbl in ["PASSPORT", "PASSAPORTE", "COUNTRY"]):
+                    cand_words = set(re.split(r"[^A-Za-z]+", cand.upper())) - {""}
+                    if len(cand) > 1 and not cand_words.issubset(label_kw) and not any(lbl in cand for lbl in ["PASSPORT", "PASSAPORTE", "COUNTRY"]):
                         surname = cand
 
             if re.search(r"\b(?:GIVEN\s*NAMES?|PRENOMS?|NOMBRES?|NOME|VORNAMEN|NOMI)\b", tu):
-                m = re.search(r"(?:GIVEN\s*NAMES?|PRENOMS?|NOMBRES?|NOME|VORNAMEN|NOMI)\s*[:/\-]?\s*([A-Z\s]{2,})", t, re.IGNORECASE)
-                if m and len(m.group(1).strip()) > 1 and not re.search(r"\b(?:PASSPORT|PASSAPORTE|COUNTRY|REPUBLIC)\b", m.group(1), re.I):
-                    given = m.group(1).strip()
+                m = re.search(r"(?:GIVEN\s*NAMES?|PRENOMS?|NOMBRES?|NOME|VORNAMEN|NOMI)\s*[:/\-]?\s*([A-Za-z\s]{2,})", t, re.IGNORECASE)
+                val = m.group(1).strip() if m else ""
+                val_words = set(re.split(r"[^A-Za-z]+", val.upper())) - {""}
+                if val and len(val) > 1 and not val_words.issubset(label_kw):
+                    given = val
                 elif idx + 1 < len(raw_text):
                     cand = raw_text[idx + 1].strip()
-                    if len(cand) > 1 and cand.isupper() and not any(lbl in cand for lbl in ["PASSPORT", "PASSAPORTE", "COUNTRY"]):
+                    cand_words = set(re.split(r"[^A-Za-z]+", cand.upper())) - {""}
+                    if len(cand) > 1 and not cand_words.issubset(label_kw) and not any(lbl in cand for lbl in ["PASSPORT", "PASSAPORTE", "COUNTRY"]):
                         given = cand
 
-        if surname and given and not extracted_fields.get("name"):
+        if surname and given and surname != given and not extracted_fields.get("name"):
             extracted_fields["name"] = f"{given} {surname}"
         elif surname and not extracted_fields.get("name"):
             extracted_fields["name"] = surname
@@ -1274,11 +1321,21 @@ def extract_document_fields(image_path: str, document_type: str, fallback_image_
 
         v_type_m = re.search(r"(?:TYPE|CLASS|CATEGORY)\s*[:\-]?\s*([A-Za-z0-9/-]{1,10})\b", joined_text, re.I)
         if v_type_m:
-            extracted_fields["visa_type"] = v_type_m.group(1).upper()
+            candidate_vtype = v_type_m.group(1).upper()
+            if candidate_vtype not in ["OF", "NO", "VISA"]:
+                extracted_fields["visa_type"] = candidate_vtype
+        for vt in ["TOURIST", "BUSINESS", "EMPLOYMENT", "STUDENT", "CONFERENCE", "TRANSIT", "ENTRY"]:
+            if vt in joined_text.upper():
+                extracted_fields["visa_type"] = vt
+                break
 
         entries_m = re.search(r"(?:ENTRIES|NO\s*OF\s*ENTRIES)\s*[:\-]?\s*([SMD0-9]|MULTIPLE|SINGLE|DOUBLE)\b", joined_text, re.I)
         if entries_m:
             extracted_fields["entries"] = entries_m.group(1).upper()
+        for en in ["SINGLE", "MULTIPLE", "DOUBLE"]:
+            if en in joined_text.upper():
+                extracted_fields["entries"] = en
+                break
 
         pass_on_visa = re.search(r"(?:PASSPORT\s*(?:NO|NUMBER|Nº|N°)?|PASS\s*NO)\s*[:\-]?\s*([A-Z0-9]{6,10})\b", joined_text, re.I)
         if pass_on_visa:
@@ -1291,9 +1348,22 @@ def extract_document_fields(image_path: str, document_type: str, fallback_image_
             iss_m = re.search(r"(?:Valid\s*From|Date\s*of\s*Issue|Issued\s*On)\s*[:\-]?\s*(\d{2}[/\-.]\d{2}[/\-.]\d{4})", line, re.I)
             if iss_m and not extracted_fields.get("date_of_issue"):
                 extracted_fields["date_of_issue"] = iss_m.group(1)
+            elif re.search(r"(?:Valid\s*From|Date\s*of\s*Issue|Issued\s*On)", line, re.I) and not extracted_fields.get("date_of_issue"):
+                for next_l in raw_text[idx+1:idx+4]:
+                    dm = re.search(r"\b(\d{2}[/\-.]\d{2}[/\-.]\d{4})\b", next_l)
+                    if dm:
+                        extracted_fields["date_of_issue"] = dm.group(1)
+                        break
+
             exp_m = re.search(r"(?:Valid\s*Until|Date\s*of\s*Expiry|Expiry\s*Date|Valid\s*Till)\s*[:\-]?\s*(\d{2}[/\-.]\d{2}[/\-.]\d{4})", line, re.I)
             if exp_m and not extracted_fields.get("date_of_expiry"):
                 extracted_fields["date_of_expiry"] = exp_m.group(1)
+            elif re.search(r"(?:Valid\s*Until|Date\s*of\s*Expiry|Expiry\s*Date|Valid\s*Till)", line, re.I) and not extracted_fields.get("date_of_expiry"):
+                for next_l in raw_text[idx+1:idx+4]:
+                    dm = re.search(r"\b(\d{2}[/\-.]\d{2}[/\-.]\d{4})\b", next_l)
+                    if dm and dm.group(1) != extracted_fields.get("date_of_issue"):
+                        extracted_fields["date_of_expiry"] = dm.group(1)
+                        break
 
     # Common field patterns across all document categories
     patterns = [
@@ -1387,7 +1457,8 @@ def run_ocr(
     face_info: dict = None,
     fallback_image_path: str = None,
     document_quad: list = None,
-    file_id: str = None
+    file_id: str = None,
+    image_bgr: np.ndarray = None
 ) -> dict:
     """
     Intelligent Auto-Detect Cascaded OCR Pipeline with Whole-Image Deep Scanning:
@@ -1397,7 +1468,12 @@ def run_ocr(
     4. Executes domain-specific parser (MRZ cascade for Passports, VIZ + Regex for IDs & Permits).
     5. Returns extracted fields, confidence, scanned image URL, and localized detected regions.
     """
-    ocr_image_path = ensure_optimal_ocr_image(image_path, max_dim=1200)
+    if image_bgr is not None:
+        ocr_image_path = image_path
+        img_mat = image_bgr
+    else:
+        ocr_image_path = ensure_optimal_ocr_image(image_path, max_dim=1200)
+        img_mat = cv2.imread(ocr_image_path)
     fallback_opt = ensure_optimal_ocr_image(fallback_image_path, max_dim=1200) if fallback_image_path else None
 
     if face_info is None:
@@ -1405,13 +1481,13 @@ def run_ocr(
         if not face_info.get("face_detected") and fallback_opt:
             face_info = extract_document_face(fallback_opt)
 
-    # 1. Whole-Document Deep Scene Scanning
-    scan_res = scan_document_regions(ocr_image_path, fallback_image_path=fallback_opt, face_info=face_info)
+    # 1. Whole-Document Deep Scene Scanning (reusing in-memory NumPy matrix!)
+    scan_res = scan_document_regions(ocr_image_path, fallback_image_path=fallback_opt, face_info=face_info, image_bgr=img_mat)
     detected_regions = scan_res.get("detected_regions", [])
     scanned_lines = scan_res.get("raw_text", [])
     mrz_candidates = scan_res.get("mrz_candidates", [])
 
-    # 2. Render Green Lines Overlay Image
+    # 2. Render Green Lines Overlay Image (reusing in-memory NumPy matrix!)
     backend_dir = os.path.dirname(os.path.dirname(__file__))
     scanned_dir = os.path.join(backend_dir, "uploads", "scanned")
     os.makedirs(scanned_dir, exist_ok=True)
@@ -1420,12 +1496,12 @@ def run_ocr(
     scanned_filename = f"{base_clean}_scanned.jpg"
     scanned_filepath = os.path.join(scanned_dir, scanned_filename)
     try:
-        generate_scanned_green_overlay(ocr_image_path, detected_regions, document_quad, scanned_filepath)
+        generate_scanned_green_overlay(ocr_image_path, detected_regions, document_quad, scanned_filepath, image_bgr=img_mat)
         scanned_image_url = f"/scanned-images/{scanned_filename}"
     except Exception:
         scanned_image_url = None
 
-    # 3. Dynamic Field Extraction
+    # 3. Dynamic Field Extraction (reusing pre_scanned_text tokens from single pass!)
     initial_generic = extract_document_fields(
         ocr_image_path, document_type, fallback_image_path=fallback_opt, pre_scanned_text=scanned_lines
     )
@@ -1443,7 +1519,7 @@ def run_ocr(
         effective_type = "passport"
 
     if effective_type == "passport":
-        passport_data = extract_passport(ocr_image_path, fallback_image_path=fallback_opt, mrz_candidates=mrz_candidates)
+        passport_data = extract_passport(ocr_image_path, fallback_image_path=fallback_opt, mrz_candidates=mrz_candidates, image_bgr=img_mat)
         has_valid_mrz = (
             passport_data.get("mrz_valid_score", 0) > 0
             and (passport_data.get("passport_number") or passport_data.get("name") or passport_data.get("mrz_line2"))
@@ -1455,6 +1531,12 @@ def run_ocr(
         merged_fields = dict(generic_data["extracted_fields"])
         for k, v in passport_data.items():
             if v and (not merged_fields.get(k) or k in ["passport_number", "date_of_birth", "date_of_expiry", "mrz_line2", "gender"]):
+                if k in ["date_of_birth", "date_of_expiry"]:
+                    from modules.validation import parse_date
+                    p_mrz = parse_date(v, date_type="dob" if k == "date_of_birth" else "expiry")
+                    p_viz = parse_date(merged_fields.get(k), date_type="dob" if k == "date_of_birth" else "expiry")
+                    if not p_mrz and p_viz:
+                        continue  # Keep valid VIZ date
                 merged_fields[k] = v
         if passport_data.get("mrz_line2"):
             merged_fields["mrz_line2"] = passport_data.get("mrz_line2")

@@ -303,7 +303,7 @@ def evaluate_dataset(dataset: list[dict]) -> dict:
 
         # 2. Fast Cascaded OCR (Phase 2)
         t0 = time.perf_counter()
-        ocr_res = run_ocr(ctx.processed_image_path, doc_type)
+        ocr_res = run_ocr(ctx.processed_image_path, doc_type, image_bgr=ctx.clahe_bgr)
         stage_latencies["ocr"].append((time.perf_counter() - t0) * 1000)
 
         # 3. Offline Tampering Forensics (Phase 4)
