@@ -14,16 +14,29 @@ env/
 dist/
 build/
 
-# Uploaded & generated files
+# Uploaded & generated runtime files
 uploads/*
+!uploads/**/.gitkeep
 !uploads/.gitkeep
+scratch/
 data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
 !data/.gitkeep
 
-# Paddle / Model caches
+# Paddle / HuggingFace / Model caches
 .paddlex/
 .paddleocr/
+.cache/
+huggingface/
+*.onnx
+*.pt
+*.pth
+*.bin
 
-# Operating System files
+# Temporary & system files
+*.tmp
+*.log
 .DS_Store
 Thumbs.db

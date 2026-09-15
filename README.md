@@ -146,14 +146,19 @@ SIH 188/
 ├── backend/
 │   ├── data/
 │   │   ├── blacklist.db             # Stolen / blacklisted travel documents database
-│   │   └── border_ledger.db        # Blockchain audit ledger database
+│   │   ├── border_ledger.db        # Blockchain audit ledger database
+│   │   └── benchmark_report.json   # 104-document benchmark evaluation metrics
 │   ├── modules/
 │   │   ├── biometrics.py           # 1:1 and 1:N facial matching & liveness engine
 │   │   ├── blockchain.py           # Cryptographic SHA-256 inspection ledger
 │   │   ├── ocr.py                  # PaddleOCR, TrOCR, MRZ parsing & HUD scanner
 │   │   ├── preprocessing.py        # 4-way orientation, contour deskew & CLAHE
 │   │   ├── tampering.py            # ELA heatmap, ViT deepfake detector & EXIF
+│   │   ├── timing.py               # High-resolution StageTimer (zero PII logging)
 │   │   └── validation.py           # Verhoeff D5, ECI, Sarathi, ICAO 7-3-1 engines
+│   ├── tools/
+│   │   ├── benchmark_suite.py      # Reproducible 104-document benchmark testbed
+│   │   └── verify_user_image.py    # Offline CLI verification script
 │   ├── uploads/                    # Local storage (gitignored with .gitkeep)
 │   │   ├── ela/                    # Generated ELA difference heatmaps
 │   │   ├── faces/                  # Cropped biometric passport portraits
@@ -209,11 +214,11 @@ cd backend
 pip install -r requirements.txt
 
 # Start the FastAPI server with pre-warmed models
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --port 8000
 ```
 
 > **Backend API Docs (Swagger UI)**: `http://localhost:8000/docs`  
-> **Health Check**: `http://localhost:8000/api/health`
+> **Health Check**: `http://localhost:8000/docs`
 
 ---
 
@@ -236,19 +241,43 @@ npm run dev
 
 ## 🧪 Testing & Verification
 
-### Running Backend Unit Tests
-Execute the comprehensive test suite verifying Verhoeff $D_5$, ECI EPIC, MoRTH Driving License, Consular Visa, and ICAO 7-3-1 calculations:
+### Running Complete Backend Unit Tests
+Execute the comprehensive test suite verifying Verhoeff $D_5$, ECI EPIC, MoRTH Driving License, Consular Visa, ICAO 7-3-1 calculations, tampering forensics, and preprocessing:
 
 ```bash
-cd backend
-python -m unittest test_validation.py
+# Run all discovered unit tests in backend
+python -m unittest discover -s backend
 ```
 ```
-................
 ----------------------------------------------------------------------
-Ran 16 tests in 0.025s
+Ran 31 tests in 14.895s
 
 OK
+```
+
+### Running Biometric & Blockchain Cryptographic Tests
+```bash
+python backend/tests/test_biometrics_and_blockchain.py
+```
+```
+[PASS] test_cosine_similarity_properties
+[PASS] test_liveness_heuristics
+[PASS] test_alias_detection_with_synthetic_embedding
+[PASS] test_blockchain_genesis_and_chain_integrity
+[PASS] test_blockchain_block_commit_and_linkage
+[PASS] test_blockchain_recent_blocks
+
+ALL 6 BIOMETRIC & BLOCKCHAIN TESTS PASSED SUCCESSFULLY!
+```
+
+### Running the 104-Document Benchmark Suite
+```bash
+python backend/tools/benchmark_suite.py
+```
+
+### Running Offline Single-Image Verification
+```bash
+python backend/tools/verify_user_image.py
 ```
 
 ### Running Frontend Type Checks

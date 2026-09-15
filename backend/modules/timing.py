@@ -47,3 +47,4 @@ class StageTimer:
         res = dict(self.stage_durations)
         res["TOTAL"] = self.total_elapsed_ms()
         return res
+
