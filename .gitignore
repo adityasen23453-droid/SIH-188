@@ -59,6 +59,7 @@ backend/uploads/*
 !backend/uploads/preprocessed/
 !backend/uploads/faces/
 !backend/uploads/scanned/
+!backend/uploads/edge/
 backend/uploads/ela/*
 !backend/uploads/ela/.gitkeep
 backend/uploads/preprocessed/*
@@ -67,6 +68,14 @@ backend/uploads/faces/*
 !backend/uploads/faces/.gitkeep
 backend/uploads/scanned/*
 !backend/uploads/scanned/.gitkeep
+backend/uploads/edge/*
+!backend/uploads/edge/.gitkeep
+
+# Synthetic benchmark test image folders (preserve json reports, ignore images)
+backend/data/benchmark_docs/
+backend/data/benchmark_edge_docs/
+backend/data/benchmark_dataset/
+
 backend/data/*.db-journal
 backend/data/*.db-wal
 backend/data/*.db-shm

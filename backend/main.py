@@ -243,7 +243,7 @@ async def analyze_document(
         ocr_task = loop.run_in_executor(
             pool, run_ocr, proc_path, file_info["document_type"], face_info, file_info["file_path"], ctx.document_quad, file_id, ctx.clahe_bgr
         )
-        tamp_task = loop.run_in_executor(pool, run_tampering_detection, proc_path)
+        tamp_task = loop.run_in_executor(pool, run_tampering_detection, proc_path, ctx, ctx.clahe_bgr)
         ocr_res, tampering_res = await asyncio.gather(ocr_task, tamp_task)
     timer.end_stage("OCR_&_TAMPERING")
 

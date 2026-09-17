@@ -18,12 +18,30 @@ build/
 uploads/*
 !uploads/**/.gitkeep
 !uploads/.gitkeep
+!uploads/ela/
+!uploads/preprocessed/
+!uploads/faces/
+!uploads/scanned/
+!uploads/edge/
+uploads/ela/*
+!uploads/ela/.gitkeep
+uploads/preprocessed/*
+!uploads/preprocessed/.gitkeep
+uploads/faces/*
+!uploads/faces/.gitkeep
+uploads/scanned/*
+!uploads/scanned/.gitkeep
+uploads/edge/*
+!uploads/edge/.gitkeep
 scratch/
 data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 !data/.gitkeep
+data/benchmark_docs/
+data/benchmark_edge_docs/
+data/benchmark_dataset/
 
 # Paddle / HuggingFace / Model caches
 .paddlex/

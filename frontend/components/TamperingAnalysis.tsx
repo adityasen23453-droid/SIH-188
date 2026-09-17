@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Flame, Cpu, FileCode2, ShieldAlert } from "lucide-react";
+import { Flame, Cpu, FileCode2, ShieldAlert, ScanLine } from "lucide-react";
 import { TamperingResult, AiDetectionResult } from "@/types";
 
 interface TamperingAnalysisProps {
@@ -168,6 +168,42 @@ export const TamperingAnalysis: React.FC<TamperingAnalysisProps> = ({
           </p>
         </div>
       </div>
+
+      {tampering.edge_forensics && (
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono space-y-2 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-2">
+              <ScanLine className="w-4 h-4 text-cyan-600 shrink-0" />
+              <span className="font-bold text-slate-800 uppercase">
+                Edge Discontinuity & Boundary Forensics
+              </span>
+              <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                tampering.edge_forensics.status === "ANOMALY_DETECTED"
+                  ? "bg-rose-100 text-rose-800"
+                  : tampering.edge_forensics.status === "SUSPICIOUS"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}>
+                {tampering.edge_forensics.status || "CLEAN"}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-slate-600">
+              <span>Score: <strong className="text-slate-900">{tampering.edge_forensics.edge_anomaly_score.toFixed(1)}/100</strong></span>
+              <span>Conf: <strong className="text-slate-900">{(tampering.edge_forensics.confidence * 100).toFixed(0)}%</strong></span>
+              <span>Clusters: <strong className="text-slate-900">{tampering.edge_forensics.suspicious_regions?.length || 0}</strong></span>
+            </div>
+          </div>
+          {tampering.edge_forensics.reason_codes && tampering.edge_forensics.reason_codes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {tampering.edge_forensics.reason_codes.map((code, idx) => (
+                <span key={idx} className="px-2 py-0.5 bg-white border border-slate-200 text-[10px] text-slate-600 rounded">
+                  {code}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {tampering.preprocessing && (
         <div className="p-4 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono flex items-center justify-between text-slate-700 shadow-xs">

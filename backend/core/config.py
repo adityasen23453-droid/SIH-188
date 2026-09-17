@@ -134,6 +134,45 @@ class Settings(BaseSettings):
     )
 
     # --------------------------------------------------------------------------
+    # Edge Discontinuity & Boundary Forensics Configuration
+    # --------------------------------------------------------------------------
+    EDGE_FORENSICS_ENABLED: bool = Field(
+        default=True,
+        description="Enable edge discontinuity and boundary consistency forensics."
+    )
+    EDGE_FORENSICS_MODE: str = Field(
+        default="shadow",
+        description="Operational mode: 'shadow' (metrics only) or 'active' (contributes to risk score)."
+    )
+    EDGE_FORENSICS_WEIGHT: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.50,
+        description="Weight of edge anomaly score in active multi-signal tampering fusion."
+    )
+    EDGE_MIN_REGION_AREA: int = Field(
+        default=400,
+        ge=50,
+        description="Minimum pixel area for suspicious boundary cluster to filter isolated noise."
+    )
+    EDGE_MIN_CONFIDENCE: float = Field(
+        default=0.50,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence threshold required to report edge anomalies."
+    )
+    EDGE_MAX_SUSPICIOUS_REGIONS: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum number of suspicious boundary boxes to report."
+    )
+    EDGE_SAVE_HEATMAP: bool = Field(
+        default=True,
+        description="Whether to generate and save edge discontinuity difference heatmaps."
+    )
+
+    # --------------------------------------------------------------------------
     # Validators & Helper Parsers
     # --------------------------------------------------------------------------
     @field_validator("DEBUG", mode="before")

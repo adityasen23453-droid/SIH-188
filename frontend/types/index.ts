@@ -165,6 +165,23 @@ export interface DetectedRegion {
   text?: string;
 }
 
+export interface EdgeForensicsResult {
+  edge_anomaly_score: number;
+  confidence: number;
+  suspicious_regions: number[][];
+  reason_codes: string[];
+  image_quality?: {
+    sharpness_var?: number;
+    dynamic_range?: number;
+    noise_floor?: number;
+    quality_status?: string;
+    confidence_multiplier?: number;
+  };
+  status?: string;
+  heatmap_path?: string | null;
+  heatmap_url?: string | null;
+}
+
 export interface TamperingResult {
   ela: {
     ela_score: number;
@@ -180,6 +197,7 @@ export interface TamperingResult {
   };
   ai_detection?: AiDetectionResult;
   stamp_forensics?: StampForensics;
+  edge_forensics?: EdgeForensicsResult;
   tampering_likelihood: number;
   risk_level: "low" | "medium" | "high";
   preprocessing?: {

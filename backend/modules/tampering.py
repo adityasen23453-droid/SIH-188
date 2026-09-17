@@ -1,10 +1,14 @@
 import io
 import os
+from typing import Optional, Any
 import cv2
 import numpy as np
 from PIL import Image, ImageChops, ImageEnhance, ImageStat, ExifTags
 import torch
 import torch.nn.functional as F
+
+from core.config import get_settings
+from modules.edge_forensics import detect_boundary_discontinuities
 
 _forgery_model = None
 _forgery_processor = None
@@ -458,12 +462,19 @@ def check_ai_manipulation(image_path: str, blended_img: Image.Image = None) -> d
         }
 
 
-def run_tampering_detection(image_path: str) -> dict:
+def run_tampering_detection(
+    image_path: str,
+    context: Optional[Any] = None,
+    image_bgr: Optional[np.ndarray] = None
+) -> dict:
     """
     Multi-Signal Tampering Forensics Coordinator:
     Combines Hugging Face ViT Forgery Detector, ELA compression analysis,
-    EXIF metadata tool detection, border stamp HSV forensics, and noise residual disparity.
+    EXIF metadata tool detection, border stamp HSV forensics, noise residual disparity,
+    and Edge Discontinuity Forensics.
     """
+    settings = get_settings()
+
     ela_res = run_ela(image_path)
     blended = ela_res.pop("_blended_img", None)
     meta_res = check_metadata(image_path)
@@ -503,6 +514,46 @@ def run_tampering_detection(image_path: str) -> dict:
 
     final_likelihood = round(max(0.0, min(100.0, final_likelihood)), 2)
 
+    # Edge Discontinuity & Boundary Forensics Integration
+    edge_res = None
+    if getattr(settings, "EDGE_FORENSICS_ENABLED", True):
+        img_input = image_bgr
+        if img_input is None and context is not None and getattr(context, "clahe_bgr", None) is not None:
+            img_input = context.clahe_bgr
+        elif img_input is None and context is not None and getattr(context, "image_bgr", None) is not None:
+            img_input = context.image_bgr
+        if img_input is None:
+            img_input = image_path
+
+        face_bbox = None
+        if context is not None and getattr(context, "face_bbox", None) is not None:
+            face_bbox = context.face_bbox
+
+        try:
+            edge_res = detect_boundary_discontinuities(img_input, face_bbox=face_bbox)
+        except Exception as e:
+            edge_res = {
+                "edge_anomaly_score": 0.0,
+                "confidence": 0.0,
+                "suspicious_regions": [],
+                "reason_codes": ["EDGE_EXECUTION_ERROR"],
+                "image_quality": {"quality_status": "ERROR"},
+                "status": "ERROR",
+                "heatmap_path": None,
+                "heatmap_url": None,
+                "error": str(e)
+            }
+
+        # Handle Mode: shadow vs active
+        mode = getattr(settings, "EDGE_FORENSICS_MODE", "shadow").lower()
+        if mode == "active" and edge_res and edge_res.get("status") != "ERROR":
+            edge_score = edge_res.get("edge_anomaly_score", 0.0)
+            weight = getattr(settings, "EDGE_FORENSICS_WEIGHT", 0.15)
+            final_likelihood = round(
+                max(0.0, min(100.0, (final_likelihood * (1.0 - weight)) + (edge_score * weight))),
+                2
+            )
+
     if final_likelihood < 30.0:
         risk_level = "low"
     elif final_likelihood <= 60.0:
@@ -510,7 +561,7 @@ def run_tampering_detection(image_path: str) -> dict:
     else:
         risk_level = "high"
 
-    return {
+    result = {
         "ela": ela_res,
         "metadata": meta_res,
         "ai_detection": ai_res,
@@ -518,3 +569,7 @@ def run_tampering_detection(image_path: str) -> dict:
         "tampering_likelihood": final_likelihood,
         "risk_level": risk_level
     }
+    if edge_res is not None:
+        result["edge_forensics"] = edge_res
+
+    return result
