@@ -7,3 +7,5 @@ paddlepaddle
 transformers
 torch
 opencv-python
+cryptography>=43.0.0
+pydantic-settings>=2.0.0

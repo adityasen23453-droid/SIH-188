@@ -210,6 +210,10 @@ export interface BlockchainBlock {
   officer_id: string;
   previous_hash: string;
   block_hash: string;
+  canonical_hash?: string;
+  event_type?: string;
+  anchor_status?: string;
+  signature?: string | null;
 }
 
 export interface BlockchainAuditResult {
@@ -218,6 +222,11 @@ export interface BlockchainAuditResult {
   tampered_blocks: Array<{ block_index: number; reason: string }>;
   latest_block_hash?: string;
   verified_at?: string;
+  signatures_verified?: number;
+  merkle_root?: string;
+  designation?: string;
+  hash_algorithm?: string;
+  signature_algorithm?: string;
 }
 
 export interface LivenessInfo {

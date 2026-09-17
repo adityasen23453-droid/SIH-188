@@ -224,17 +224,45 @@ def register_biometric_profile(
     doc_type: str,
     nationality: str,
     crossing_point: str,
-    embedding: np.ndarray
+    embedding: np.ndarray,
+    retention_hours: int | None = None
 ) -> int:
-    """Registers a traveler's biometric face embedding in the border database."""
+    """
+    Registers a traveler's biometric face embedding in the border database.
+    Protects biometric templates with authenticated AES-256-GCM encryption at rest
+    and generates an isolated pseudonymized subject_id (DPDP Act 2023 / ISO/IEC 19794-5).
+    """
     if embedding is None:
         return -1
+
+    import uuid
+    from datetime import timedelta
+    from core.security import encrypt_bytes
+    from core.config import get_settings
+
+    settings = get_settings()
+    hours = retention_hours or settings.BIOMETRIC_RETENTION_HOURS
+    retention_until = (datetime.utcnow() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    subject_id = f"SUBJ-{uuid.uuid4().hex[:12].upper()}"
+
+    # Encrypt 576-dim float32 embedding bytes with AES-256-GCM
+    raw_bytes = embedding.astype(np.float32).tobytes()
+    encrypted_blob = encrypt_bytes(raw_bytes)
+
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
+        # Ensure auxiliary privacy columns exist
+        cursor.execute("PRAGMA table_info(biometric_records)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if "subject_id" not in cols:
+            cursor.execute("ALTER TABLE biometric_records ADD COLUMN subject_id TEXT")
+        if "retention_until" not in cols:
+            cursor.execute("ALTER TABLE biometric_records ADD COLUMN retention_until TEXT")
+
         cursor.execute("""
             INSERT INTO biometric_records
-            (traveler_name, document_number, document_type, nationality, crossing_point, crossing_timestamp, embedding_blob)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (traveler_name, document_number, document_type, nationality, crossing_point, crossing_timestamp, embedding_blob, subject_id, retention_until)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             name.upper().strip(),
             doc_number.upper().strip(),
@@ -242,7 +270,9 @@ def register_biometric_profile(
             nationality.upper().strip(),
             crossing_point,
             datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-            embedding.astype(np.float32).tobytes()
+            encrypted_blob,
+            subject_id,
+            retention_until
         ))
         conn.commit()
         return cursor.lastrowid
@@ -258,9 +288,12 @@ def search_alias_identities(
     1:N Search across border records:
     Detects if the exact same face has previously appeared under a DIFFERENT name or passport number!
     Satisfies SIH PS 26188: 'Multiple identities used by the same person'.
+    Decrypts biometric templates in memory using authenticated AES-256-GCM.
     """
     if query_embedding is None:
         return {"alias_detected": False, "matches": []}
+
+    from core.security import decrypt_bytes
 
     current_name_clean = (current_name or "").strip().upper()
     current_doc_clean = (current_doc_num or "").strip().upper()
@@ -276,7 +309,9 @@ def search_alias_identities(
 
         for row in rows:
             rec_id, rec_name, rec_doc, rec_type, rec_nat, rec_point, rec_time, emb_blob = row
-            stored_emb = np.frombuffer(emb_blob, dtype=np.float32)
+            # Decrypt embedding blob (transparently handles legacy unencrypted blobs)
+            decrypted_blob = decrypt_bytes(emb_blob)
+            stored_emb = np.frombuffer(decrypted_blob, dtype=np.float32)
             if stored_emb.shape[0] != query_embedding.shape[0]:
                 continue
 

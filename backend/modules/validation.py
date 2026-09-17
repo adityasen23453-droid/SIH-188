@@ -862,6 +862,7 @@ def init_registry_db(db_path: str):
 def check_registry(document_number: str = None, document_type: str = "passport") -> dict:
     """
     Queries the border registry for document validity, revocation, and blacklist signals.
+    Uses the abstracted repository layer with graceful local fallback.
     """
     if not document_number or not isinstance(document_number, str) or not document_number.strip():
         return {
@@ -870,33 +871,26 @@ def check_registry(document_number: str = None, document_type: str = "passport")
             "reason": None
         }
 
-    db_path = get_registry_db_path()
-    init_registry_db(db_path)
-
     norm_num = document_number.strip().upper()
 
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        from database.repository import get_repository
+        repo = get_repository()
 
         # 1. Blacklist check
-        cursor.execute("SELECT reason FROM blacklist WHERE UPPER(passport_number) = ?", (norm_num,))
-        black_row = cursor.fetchone()
-        if black_row:
-            conn.close()
+        black_rec = repo.get_blacklist(norm_num)
+        if black_rec:
             return {
                 "blacklisted": True,
                 "status": "STOLEN",
-                "reason": black_row[0]
+                "reason": black_rec.reason
             }
 
         # 2. Document Registry status check
-        cursor.execute("SELECT status, revocation_reason FROM documents WHERE UPPER(document_number) = ?", (norm_num,))
-        doc_row = cursor.fetchone()
-        conn.close()
-
-        if doc_row:
-            status, rev_reason = doc_row
+        doc_rec = repo.get_document(norm_num)
+        if doc_rec:
+            status = doc_rec.status
+            rev_reason = doc_rec.revocation_reason
             return {
                 "blacklisted": status in ["REVOKED", "STOLEN"],
                 "status": status,
@@ -909,12 +903,51 @@ def check_registry(document_number: str = None, document_type: str = "passport")
             "reason": None
         }
 
-    except Exception as e:
-        return {
-            "blacklisted": False,
-            "status": "ERROR",
-            "reason": f"Registry error: {str(e)}"
-        }
+    except Exception as repo_err:
+        # Graceful fallback to direct SQLite connection to ensure 100% legacy uptime
+        db_path = get_registry_db_path()
+        init_registry_db(db_path)
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # 1. Blacklist check
+            cursor.execute("SELECT reason FROM blacklist WHERE UPPER(passport_number) = ?", (norm_num,))
+            black_row = cursor.fetchone()
+            if black_row:
+                conn.close()
+                return {
+                    "blacklisted": True,
+                    "status": "STOLEN",
+                    "reason": black_row[0]
+                }
+
+            # 2. Document Registry status check
+            cursor.execute("SELECT status, revocation_reason FROM documents WHERE UPPER(document_number) = ?", (norm_num,))
+            doc_row = cursor.fetchone()
+            conn.close()
+
+            if doc_row:
+                status, rev_reason = doc_row
+                return {
+                    "blacklisted": status in ["REVOKED", "STOLEN"],
+                    "status": status,
+                    "reason": rev_reason or f"Registry status: {status}"
+                }
+
+            return {
+                "blacklisted": False,
+                "status": "VALID",
+                "reason": None
+            }
+
+        except Exception as e:
+            return {
+                "blacklisted": False,
+                "status": "ERROR",
+                "reason": f"Registry error: {str(e)}"
+            }
 
 
 def check_blacklist(passport_number: str = None) -> dict:

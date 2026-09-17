@@ -21,6 +21,8 @@ venv.bak/
 .env.production.local
 *.env
 !*.env.example
+*.pem
+*.key
 
 # Next.js / Node.js
 node_modules/

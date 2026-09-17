@@ -2,10 +2,17 @@ import os
 import uuid
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, File, UploadFile, Form, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, Form, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+import sys
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
+from core.config import get_settings
+from core.auth import get_current_officer, OfficerSession, SovereignRole
 from modules.ocr import run_ocr
 from modules.validation import run_validation
 from modules.tampering import run_tampering_detection
@@ -15,20 +22,35 @@ from modules.biometrics import verify_face_1to1_and_1toN
 from modules.blockchain import (
     commit_inspection_block,
     update_block_biometric_decision,
+    record_officer_override,
     verify_chain_integrity,
     get_recent_blocks,
     get_latest_block
 )
+from modules.ledger_adapter import get_audit_ledger
+
+settings = get_settings()
 
 app = FastAPI(title="SIH 26188 Border Document Screening API")
 
+# Configure CORS using strict allowlist from centralized settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Adds standard security headers to all HTTP responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 @app.on_event("startup")
@@ -71,6 +93,18 @@ app.mount("/scanned-images", StaticFiles(directory=UPLOAD_SCANNED_DIR), name="sc
 DB_FILES = {}
 
 
+@app.get("/api/auth/me")
+def get_active_officer_session(officer: OfficerSession = Depends(get_current_officer)):
+    """Returns active sovereign border checkpoint officer profile and permissions."""
+    return officer.to_dict()
+
+
+@app.get("/api/auth/roles")
+def get_available_sovereign_roles():
+    """Returns available sovereign operational roles for UI role-switcher."""
+    return [{"role": r.value, "description": r.name} for r in SovereignRole]
+
+
 def get_preprocessed_data(file_info: dict) -> tuple[str, dict]:
     if not file_info.get("preprocessed_result"):
         file_info["preprocessed_result"] = detect_and_correct_document(file_info["file_path"])
@@ -85,13 +119,22 @@ async def upload_document(
     document_type: str = Form("auto")
 ):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
+    try:
+        content = await file.read()
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": f"Failed to read upload payload: {str(e)}"})
+
+    # Phase 6: Validate file size and authentic magic-byte signature
+    from modules.lifecycle import validate_file_content
+    is_valid, safe_ext, err_msg, status_code = validate_file_content(content, file.filename)
+    if not is_valid:
+        return JSONResponse(status_code=status_code, content={"error": err_msg})
+
     file_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename)[1] if file.filename else ""
-    filename = f"{file_id}{ext}"
+    filename = f"{file_id}{safe_ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
     try:
-        content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
@@ -165,7 +208,11 @@ async def tamper_check_document(file_id: str):
 
 
 @app.post("/api/analyze/{file_id}")
-async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
+async def analyze_document(
+    file_id: str,
+    background_tasks: BackgroundTasks,
+    officer: OfficerSession = Depends(get_current_officer)
+):
     timer = StageTimer(document_id=file_id[:8] if file_id else None)
     file_info = DB_FILES.get(file_id)
     if not file_info:
@@ -337,7 +384,7 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
     from datetime import datetime
     now_iso = datetime.utcnow().isoformat() + "Z"
     block_hash = calculate_block_hash(
-        next_index, now_iso, ctx.doc_hash, overall_score, decision, "SSB-OFFICER-7429", prev_hash
+        next_index, now_iso, ctx.doc_hash, overall_score, decision, officer.officer_id, prev_hash
     )
     blockchain_receipt = {
         "block_index": next_index,
@@ -349,19 +396,19 @@ async def analyze_document(file_id: str, background_tasks: BackgroundTasks):
         "risk_level": overall_level.upper(),
         "biometric_status": "PENDING",
         "decision": decision,
-        "officer_id": "SSB-OFFICER-7429",
+        "officer_id": officer.officer_id,
         "previous_hash": prev_hash,
         "block_hash": block_hash
     }
     background_tasks.add_task(
-        commit_inspection_block,
+        get_audit_ledger().commit_inspection_block,
         file_path=file_info["file_path"],
         file_id=file_id,
         document_type=file_info["document_type"],
         risk_score=overall_score,
         risk_level=overall_level,
         biometric_status="PENDING",
-        officer_id="SSB-OFFICER-7429"
+        officer_id=officer.officer_id
     )
 
     timer.print_summary(
@@ -431,6 +478,12 @@ async def face_verify_endpoint(
     else:
         return JSONResponse(status_code=400, content={"error": "No live webcam image provided."})
 
+    # Validate live capture signature and dimensions
+    from modules.lifecycle import validate_file_content
+    is_valid_live, _, live_err, live_code = validate_file_content(live_bytes, "live_capture.jpg")
+    if not is_valid_live:
+        return JSONResponse(status_code=live_code, content={"error": f"Invalid live face capture: {live_err}"})
+
     # 3. Retrieve traveler metadata for 1:N alias cross-referencing
     traveler_name = ""
     doc_number = ""
@@ -453,8 +506,8 @@ async def face_verify_endpoint(
         nationality=nationality
     )
 
-    # 5. Update Blockchain Block with biometric audit verdict
-    updated_block = update_block_biometric_decision(
+    # 5. Update Audit Ledger with biometric audit verdict
+    updated_block = get_audit_ledger().update_biometric_decision(
         file_id=file_id,
         biometric_status=verification_result["status"]
     )
@@ -468,8 +521,8 @@ async def face_verify_endpoint(
 
 @app.get("/api/ledger/blocks")
 async def get_ledger_blocks(limit: int = 30):
-    """Fetches recent immutable blocks from the SHA-256 Merkle blockchain ledger."""
-    blocks = get_recent_blocks(limit=limit)
+    """Fetches recent immutable blocks from the cryptographically chained audit ledger."""
+    blocks = get_audit_ledger().get_recent_blocks(limit=limit)
     return {
         "total_returned": len(blocks),
         "blocks": blocks
@@ -478,7 +531,94 @@ async def get_ledger_blocks(limit: int = 30):
 
 @app.get("/api/ledger/verify")
 async def verify_ledger():
-    """Cryptographically verifies continuous SHA-256 chain integrity from Genesis to tip."""
-    audit_report = verify_chain_integrity()
+    """Cryptographically verifies continuous SHA-256 chain and Ed25519 signatures from Genesis to tip."""
+    audit_report = get_audit_ledger().verify_integrity()
     return audit_report
+
+
+@app.get("/api/ledger/info")
+async def get_ledger_adapter_info():
+    """Returns active sovereign audit ledger adapter designation, anchor status, and cryptographic parameters."""
+    return get_audit_ledger().get_adapter_info()
+
+
+@app.post("/api/ledger/override")
+async def officer_override_endpoint(
+    file_id: str = Form(...),
+    decision: str = Form(...),
+    reason: str = Form(...),
+    officer: OfficerSession = Depends(get_current_officer)
+):
+    """
+    Appends an immutable OFFICER_OVERRIDE_EVENT to the audit ledger.
+    Requires 'decision:override' sovereign permission (Supervisor / Investigator).
+    Preserves original screening decision in immutable historical block.
+    """
+    if not officer.can_override_decision():
+        return JSONResponse(
+            status_code=403,
+            content={"error": f"Role '{officer.role.value}' is not authorized to override screening decisions."}
+        )
+
+    receipt = get_audit_ledger().record_officer_override(
+        file_id=file_id,
+        officer_id=officer.officer_id,
+        override_decision=decision.strip().upper(),
+        reason=reason.strip()
+    )
+    if not receipt:
+        return JSONResponse(status_code=404, content={"error": "Document session not found in ledger."})
+
+    return {
+        "status": "override_recorded",
+        "blockchain_receipt": receipt
+    }
+
+
+@app.get("/api/ledger/anchor-status/{file_id}")
+async def get_anchor_status_endpoint(file_id: str):
+    """Returns sovereign anchor status (LOCAL_ANCHORED, ANCHOR_PENDING, NBF_ANCHORED) for a session."""
+    ledger = get_audit_ledger()
+    if hasattr(ledger, "get_anchor_status"):
+        return ledger.get_anchor_status(file_id)
+    import sqlite3
+    from modules.blockchain import DB_PATH
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT block_index, file_id, anchor_status, canonical_hash, signature FROM blockchain_ledger WHERE file_id = ? ORDER BY block_index DESC LIMIT 1",
+            (file_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+    return JSONResponse(status_code=404, content={"error": "Session not found in audit ledger."})
+
+
+@app.post("/api/ledger/sync")
+async def sync_ledger_anchors_endpoint(officer: OfficerSession = Depends(get_current_officer)):
+    """Flushes spooled ANCHOR_PENDING events to permissioned ledger when connectivity is restored."""
+    ledger = get_audit_ledger()
+    if hasattr(ledger, "flush_pending_anchors"):
+        return ledger.flush_pending_anchors()
+    return {"status": "LOCAL_ONLY", "message": "Active adapter operates strictly in local demo mode."}
+
+
+@app.get("/api/ledger/nbf-specification")
+async def get_nbf_specification_endpoint():
+    """
+    Returns architectural specification for integration with
+    India's National Blockchain Framework (NBF / Vishvasya Stack - MeitY).
+    Includes cryptographic parameters, zero-PII guarantees, and onboarding requirements.
+    """
+    ledger = get_audit_ledger()
+    if hasattr(ledger, "get_nbf_specification"):
+        return ledger.get_nbf_specification()
+    from modules.ledger_adapter import NBFPermissionedLedgerAdapter
+    return NBFPermissionedLedgerAdapter().get_nbf_specification()
+
+
+
+
 
